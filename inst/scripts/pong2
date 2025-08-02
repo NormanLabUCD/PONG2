@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# PONG2 CLI - Production-Ready Version
+set -euo pipefail  # Strict mode: exit on error, unset variables, and pipeline failures
+
+# ========================
+# GLOBAL CONFIGURATION
+# ========================
+readonly VERSION="1.0.0"
+readonly DEFAULT_INPUT="data/input.csv"
+readonly DEFAULT_OUTPUT="results/"
+readonly R_REPO="https://cloud.r-project.org"
+
+# --------------------------
+# Color Definitions
+# --------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# --------------------------
+# Functions
+# --------------------------
+die() {
+  echo -e "${RED}ERROR: $*${NC}" >&2
+  exit 1
+}
+
+# Default threads
+THREADS=4  
+#Development mode
+dev_mode=/Users/suraj/PONG2.0/inst/scripts
+command=""
+
+
+# Locate Rscript with validation
+RSCRIPT="$(command -v Rscript || { echo "ERROR: Rscript not found in PATH" >&2; exit 1; })"
+
+# ==================
+# CORE FUNCTIONS
+# ==================
+function load_package() {
+    error_msg="$("$RSCRIPT" -e "
+    if (!require('PONG', quietly=TRUE)) {
+            stop('PONG package not found')
+    }")"
+
+[[ -n "$error_msg" ]] && { echo "ERROR: $error_msg" >&2; exit 1; }  
+}
+
+
+function imputation() {      
+    echo -e "${GREEN}Starting imputation...${NC}"
+    source "$dev_mode/input_validation.sh"
+    "validatePlink" "$1" "$2"
+    
+    if (( $(echo "$match_percent > 0" | bc -l) )); then
+        echo -e "${GREEN}Match percentage: $match_percent%${NC}"
+        echo -e "${GREEN}Proceeding with imputation...${NC}"
+        
+        # Dependancy
+        "$dev_mode/dependancy.sh" "plink2" 
+
+        #minimac4
+        echo -e "${YELLOW}Align with 1kg hg19 ${NC}"
+        "$dev_mode/minimac4.sh" "$1" "$2" "$THREADS"
+
+        # KIR imputation: check if All or specific model
+        if [[ "$KIR_MODEL" == "All" ]]; then
+            echo -e "${YELLOW}Imputing all KIR models...${NC}"
+            "$dev_mode/kir_impute.sh" "$1" "$2" "$THREADS"
+        elif [[ "$KIR_MODEL" == "KIR3DL1" || "$KIR_MODEL" == "KIR3DL1/S1" ]]; then
+            echo -e "${YELLOW}Imputing KIR3DL1/S1 model...${NC}"
+            "$dev_mode/kir3dl1_impute.sh" "$1" "$2"
+        fi
+
+    else
+        echo -e "${RED}Less ($match_percent%) matching SNPs found in KIR region.${NC}"
+        # --force option to proceed
+        if [[ "$3" != "--force" ]]; then
+            echo -e "${YELLOW}Use --force to proceed anyway.${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}Proceeding with imputation despite low match percentage.${NC}"
+    fi
+}
+
+
+function show_help() {
+    "$dev_mode/help.sh"
+    #local help_script=$("$RSCRIPT" -e "cat(system.file('scripts', 'help.sh', package='PONG'))")
+}
+
+# ==================
+# COMMAND PROCESSING
+# ==================
+# -----------------------------------
+# STEP 1: Find the command (first non-flag argument)
+# -----------------------------------
+args=("$@")  # Save original arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --)  # End of options marker
+            shift
+            break
+            ;;
+        -*)  # Skip any flags during command detection
+            shift
+            ;;
+        *)
+            command="$1"
+            shift
+            break  # Command found, exit loop
+            ;;
+    esac
+done
+
+# -----------------------------------
+# STEP 2: Parse ALL arguments (including those before/after command)
+# -----------------------------------
+# Reset arguments for full parsing
+if (( ${#args[@]} > 0 )); then
+    set -- "${args[@]}"
+fi 
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -i|--input)
+            INPUT_PREFIX="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        -t|--threads)
+            THREADS="$2"
+            shift 2
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --)  # End of options
+            shift
+            break
+            ;;
+        -*)  # Unknown flags
+            echo "Error: Unknown option $1" >&2
+            exit 1
+            ;;
+        *)   # Non-flag arguments (including our command)
+            if [[ "$1" != "$command" ]]; then
+                echo "Error: Unexpected argument $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+
+# -----------------------------------
+# Validate and execute
+# -----------------------------------
+case "$command" in
+    run)
+        echo "Running with input:$input output:$output threads:$threads"
+        ;;
+    impute)
+        [[ -z "${INPUT_PREFIX:-}" ]] && die "--input required"
+        [[ -z "${OUTPUT_DIR:-}" ]] && die "--output required"
+
+        imputation "$INPUT_PREFIX" "$OUTPUT_DIR" "$THREADS"
+        ;;
+    "")
+        echo "Error: No command specified" >&2
+        exit 1
+        ;;
+    *)
+        echo "Error: Unknown command '$command'" >&2
+        exit 1
+        ;;
+esac
+
+
+
+
+

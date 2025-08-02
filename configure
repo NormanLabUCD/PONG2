@@ -1,0 +1,34 @@
+#!/bin/bash
+
+#INSTALL_DIR=$(Rscript -e "cat(system.file(package ='PONG'))")
+# Get the installation directory (first argument)
+
+echo "All arguments: $@"
+INSTALL_DIR="$1"
+# Print the installation directory
+echo "Installation directory: $INSTALL_DIR"
+# Perform custom actions
+echo "Running post-installation commands..."
+echo $(Rscript -e "cat(system.file(package ='PONG'))")
+# Check if the installation directory was found
+if [ -z "$INSTALL_DIR" ]; then
+  echo "Package 'PONG' not found!"
+  #exit 1
+fi
+
+# Copy the script to a directory in the user's PATH
+TARGET_DIR="$HOME/bin"
+TARGET_SCRIPT="$TARGET_DIR/PONG"
+
+# Create the target directory if it doesn't exist
+mkdir -p "$TARGET_DIR"
+
+# Copy the script
+#cp "$INSTALL_DIR/scripts/PONG" "$TARGET_SCRIPT"
+
+# Make the script executable
+#chmod +x "$TARGET_SCRIPT"
+
+echo "Script installed: $TARGET_SCRIPT"
+echo "$INSTALL_DIR/scripts/PONG"
+

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Define data to send
+action=$1
+geno=$2
+locus=$3
+output=$4
+
+R_SCRIPT=$(Rscript -e "cat(system.file('scripts', 'predict.R', package = 'PONG'))")
+
+# Check if the script exists
+if [ -z "$R_SCRIPT" ]; then
+  echo "Error: Script 'predict.R' not found!"
+  exit 1
+fi
+
+# Pass arguments to the R script
+Rscript "$R_SCRIPT" "$1" "$2" "$3"
+
