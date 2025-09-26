@@ -1,9 +1,9 @@
 #######################################################################
 #
-# Package Name: PONG Version 0.9.1
+# Package Name: PONG2 Version 0.9.1
 #
 # Description:
-#   PONG -- KIR3DL1/S1 Genotype Imputation with Attribute Bagging
+#   PONG2 -- KIR3DL1/S1 Genotype Imputation with Attribute Bagging
 #   Modified from HIBAG
 #
 # Author: Laura Ann Leaton & Genelle F Harrison
@@ -442,12 +442,12 @@ hlaGenoSwitchStrand <- function(target, template,
 	}
 
 	# call
-	gz <- .C("PONG_AlleleStrand",
+	gz <- .C("PONG2_AlleleStrand",
 		template$snp.allele, template.afreq, I1,
 		target$snp.allele, target.afreq, I2,
 		same.strand, length(s), out=logical(length(s)),
 		out.n.ambiguity=integer(1), out.n.mismatching=integer(1),
-		err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+		err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 	if (gz$err != 0) stop(hlaErrMsg())
 
 	if (verbose)
@@ -534,15 +534,15 @@ hlaGenoSwitchStrand <- function(target, template,
 #######################################################################
 # To get the information of SNP ID and position
 #
-
-hlaSNPID <- function (obj, type = c("Position", "Pos+Allele", "RefSNP+Position", 
-    "RefSNP")) 
+#' @export
+hlaSNPID <- function (obj, type = c("Position", "Pos+Allele", "RefSNP+Position",
+    "RefSNP"))
 {
-    stopifnot(inherits(obj, "hlaSNPGenoClass") | inherits(obj, 
+    stopifnot(inherits(obj, "hlaSNPGenoClass") | inherits(obj,
         "hlaAttrBagClass") | inherits(obj, "hlaAttrBagObj"))
     type <- match.arg(type)
-    switch(type, Position = obj$snp.position, `Pos+Allele` = paste(obj$snp.position, 
-        obj$snp.allele, sep = "-"), `RefSNP+Position` = paste(obj$snp.id, 
+    switch(type, Position = obj$snp.position, `Pos+Allele` = paste(obj$snp.position,
+        obj$snp.allele, sep = "-"), `RefSNP+Position` = paste(obj$snp.id,
         obj$snp.position, sep = "-"), RefSNP = obj$snp.id, invisible())
 }
 
@@ -657,8 +657,8 @@ hlaBED2Geno <- function(bed.fn, fam.fn, bim.fn, rm.invalid.allele=FALSE,
 	}
 
 	# detect bed.fn
-	bed <- .C("PONG_BEDFlag", bed.fn, snporder=integer(1), err=integer(1),
-		NAOK=TRUE, PACKAGE="PONG")
+	bed <- .C("PONG2_BEDFlag", bed.fn, snporder=integer(1), err=integer(1),
+		NAOK=TRUE, PACKAGE="PONG2")
 	if (bed$err != 0) stop(hlaErrMsg())
 	if (verbose)
 	{
@@ -747,10 +747,10 @@ hlaBED2Geno <- function(bed.fn, fam.fn, bim.fn, rm.invalid.allele=FALSE,
 	if (n.snp <= 0) stop("There is no SNP imported.")
 
 	# call the C function
-	rv <- .C("PONG_ConvBED", bed.fn, length(sample.id), length(snp.id), n.snp,
+	rv <- .C("PONG2_ConvBED", bed.fn, length(sample.id), length(snp.id), n.snp,
 		(bed$snporder==0), snp.flag, verbose,
 		geno = matrix(as.integer(0), nrow=n.snp, ncol=length(sample.id)),
-		err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+		err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 
 	# result
@@ -1175,21 +1175,21 @@ hlaLociInfo <- function(assembly =
 		if (assembly == "hg19")
 		{
 			#print(sprintf("GeneInfo_%s.txt", assembly))
-			fn <- system.file("extdata", sprintf("GeneInfo_%s.txt", assembly), package = "PONG")
+			fn <- system.file(sprintf("extdata/%s", assembly), sprintf("GeneInfo_%s.txt", assembly), package = "PONG2")
 			if (file.exists(fn)){
 				v <- read.table(fn, header = TRUE, stringsAsFactors = FALSE)
 				rownames(v) <- v$name
 				v[, -1L]
 				# return
-			
+
 				return(v)
 			}
-			
+
 		}else if (assembly == "hg38")
 		{
-			fn <- system.file("doc", sprintf("GeneInfo_%s.txt", assembly), package = "PONG")
+			fn <- system.file("extdata", sprintf("GeneInfo_%s.txt", assembly), package = "PONG2")
 			if (file.exists(fn)){
-				v <- read.table(fn, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+				v <- read.table(fn, header = TRUE, sep = "", stringsAsFactors = FALSE)
 				rownames(v) <- v$name
 				v[, -1L]
 				# return
@@ -1199,7 +1199,7 @@ hlaLociInfo <- function(assembly =
 		stop("Unknown human genome reference in 'assembly'!")
 		}
 
-	} 
+	}
 
 
 #######################################################################
@@ -1286,9 +1286,9 @@ hlaUniqueAllele <- function(hla)
 	{
 		hla <- hla[!is.na(hla)]
 		hla <- unique(hla)
-		rv <- .C("PONG_SortAlleleStr", length(hla), hla,
+		rv <- .C("PONG2_SortAlleleStr", length(hla), hla,
 			out = character(length(hla)),
-			err = integer(1), NAOK = TRUE, PACKAGE = "PONG")
+			err = integer(1), NAOK = TRUE, PACKAGE = "PONG2")
 		if (rv$err != 0) stop(hlaErrMsg())
 		rv$out
 	} else {
@@ -1590,7 +1590,7 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 				s <- c(ts1[i], ts2[i]); p <- c(ps1[i], ps2[i])
 				ind.truehla[i] <- paste(s[order(s)], collapse="/")
 				ind.predhla[i] <- paste(p[order(p)], collapse="/")
-				
+
 				hnum <- 0
 				if ((s[1]==p[1]) | (s[1]==p[2]))
 				{
@@ -1665,12 +1665,12 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 	} else {
 		nw <- ncol(WrongTab)
 	}
-	rv <- .C("PONG_Confusion", as.integer(m), confusion,
+	rv <- .C("PONG2_Confusion", as.integer(m), confusion,
 		nw, match(WrongTab, names(PredNum)) - as.integer(1),
 		out = matrix(0.0, nrow=m+1, ncol=m, dimnames=
 			list(Predict=names(PredNum), True=names(TrueNum))),
 		tmp = double((m+1)*m),
-		err = integer(1), NAOK = TRUE, PACKAGE = "PONG")
+		err = integer(1), NAOK = TRUE, PACKAGE = "PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 	confusion <- round(rv$out, 2)
 
@@ -1813,48 +1813,48 @@ hlaSplitAllele <- function(HLA, train.prop=0.5)
 # To select SNPs in the flanking region of a specified LRC locus
 #
 
-hlaGenoSubsetFlank <- function (genoobj, locus = "any", flank.bp = 500000L, assembly=c("auto", "hg19", "hg38", "unknown"), 
-    pos.mid = NA_integer_) 
+hlaGenoSubsetFlank <- function (genoobj, locus = "any", flank.bp = 500000L, assembly=c("auto", "hg19", "hg38", "unknown"),
+    pos.mid = NA_integer_)
 {
     stopifnot(inherits(genoobj, "hlaSNPGenoClass"))
     stopifnot(is.character(locus), length(locus) == 1L, !is.na(locus))
     stopifnot(is.numeric(flank.bp), length(flank.bp) == 1L, is.finite(flank.bp))
-    stopifnot(is.character(assembly), length(assembly) == 1L, 
+    stopifnot(is.character(assembly), length(assembly) == 1L,
         !is.na(assembly))
     stopifnot(is.numeric(pos.mid), length(pos.mid) == 1L)
     if (locus != "any") {
         assembly <- match.arg(assembly)
         HLAInfo <- hlaLociInfo(assembly)
         ID <- rownames(HLAInfo)
-        if (!(locus %in% ID)) 
-            stop(paste("'locus' should be one of", paste(ID, 
+        if (!(locus %in% ID))
+            stop(paste("'locus' should be one of", paste(ID,
                 collapse = ", ")))
         pos.start <- HLAInfo[locus, "start"] - flank.bp
         pos.end <- HLAInfo[locus, "end"] + flank.bp
-        if (!is.na(pos.mid)) 
-            warning("'pos.mid' is ignored when 'locus' is specified.", 
+        if (!is.na(pos.mid))
+            warning("'pos.mid' is ignored when 'locus' is specified.",
                 immediate. = TRUE)
         if (!is.null(HLAInfo$suggest.pos)) {
             i <- HLAInfo[locus, "suggest.pos"]
             if (!is.na(i) && i < 0L) {
-                warning("The position of '", locus, "' may not be appropriate for building the model.", 
+                warning("The position of '", locus, "' may not be appropriate for building the model.",
                   immediate. = TRUE)
             }
         }
     }
     else {
-        if (!is.finite(pos.mid)) 
+        if (!is.finite(pos.mid))
             stop("'pos.mid' should be specified.")
         pos.start <- pos.mid - flank.bp
         pos.end <- pos.mid + flank.bp
     }
     if (is.finite(pos.start) & is.finite(pos.end)) {
-        flag <- (pos.start <= genoobj$snp.position) & (genoobj$snp.position <= 
+        flag <- (pos.start <= genoobj$snp.position) & (genoobj$snp.position <=
             pos.end)
         flag[is.na(flag)] <- FALSE
         rv <- hlaGenoSubset(genoobj, snp.sel = flag)
     }
-    else stop("No position information for ", locus, " on ", 
+    else stop("No position information for ", locus, " on ",
         assembly)
     rv
 }
@@ -1871,7 +1871,7 @@ summary.hlaAlleleClass <- function(object, show=TRUE, ...)
 
 	HUA <- hlaUniqueAllele(c(hla$value$allele1, hla$value$allele2))
 	HLA <- factor(match(c(hla$value$allele1, hla$value$allele2), HUA))
-	levels(HLA) <- HUA	
+	levels(HLA) <- HUA
 	count <- table(HLA)
 	freq <- prop.table(count)
 	rv <- cbind(count=count, freq=freq)
@@ -1924,7 +1924,7 @@ summary.hlaAlleleClass <- function(object, show=TRUE, ...)
 ##########################################################################
 ##########################################################################
 #
-# Attribute Bagging method -- HIBAG algorithm used for PONG
+# Attribute Bagging method -- HIBAG algorithm used for PONG2
 #
 
 ##########################################################################
@@ -2014,9 +2014,9 @@ hlaAttrBagging <- function(hla, snp, nclassifier=100,
 	H2 <- as.integer(H[(n.samp+1):(2*n.samp)]) - as.integer(1)
 
 	# create an attribute bagging object
-	rv <- .C("PONG_Training", n.snp, n.samp, snp.geno, n.hla,
+	rv <- .C("PONG2_Training", n.snp, n.samp, snp.geno, n.hla,
 		H1, H2, AB=integer(1), err=integer(1),
-		NAOK = TRUE, PACKAGE = "PONG")
+		NAOK = TRUE, PACKAGE = "PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 	ABmodel <- rv$AB
 
@@ -2053,7 +2053,7 @@ hlaAttrBagging <- function(hla, snp, nclassifier=100,
 
 	if (verbose)
 	{
-		cat("Build a PONG model with", nclassifier, "individual classifiers:\n")
+		cat("Build a PONG2 model with", nclassifier, "individual classifiers:\n")
 		cat("# of SNPs randomly sampled as candidates for each selection: ",
 			mtry, "\n", sep="")
 		cat("# of SNPs: ", n.snp, ", # of samples: ", n.samp, "\n", sep="")
@@ -2064,9 +2064,9 @@ hlaAttrBagging <- function(hla, snp, nclassifier=100,
 	###################################################################
 	# training ...
 	# add new individual classifers
-	rv <- .C("PONG_NewClassifiers", ABmodel, as.integer(nclassifier),
+	rv <- .C("PONG2_NewClassifiers", ABmodel, as.integer(nclassifier),
 		as.integer(mtry), as.logical(prune), verbose, verbose.detail,
-		err=integer(1), NAOK = TRUE, PACKAGE = "PONG")
+		err=integer(1), NAOK = TRUE, PACKAGE = "PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 
 	# output
@@ -2118,13 +2118,13 @@ hlaParallelAttrBagging <- function(cl, hla, snp, auto.save="",
 		if (!is.null(cl))
 		{
 			cat(sprintf(
-				"Build a PONG model of %d individual classifier%s in parallel with %d node%s:\n",
+				"Build a PONG2 model of %d individual classifier%s in parallel with %d node%s:\n",
 				nclassifier, if (nclassifier>1) "s" else "",
 				length(cl), if (length(cl)>1) "s" else ""
 			))
 		} else {
 			cat(sprintf(
-				"Build a PONG model of %d individual classifier%s:\n",
+				"Build a PONG2 model of %d individual classifier%s:\n",
 				nclassifier, if (nclassifier>1) "s" else ""
 			))
 		}
@@ -2146,7 +2146,7 @@ hlaParallelAttrBagging <- function(cl, hla, snp, auto.save="",
 		.DynamicClusterCall(cl,
 			fun = function(job, hla, snp, mtry, prune, rm.na)
 			{
-				library(PONG)
+				library(PONG2)
 				model <- hlaAttrBagging(hla=hla, snp=snp, nclassifier=1,
 					mtry=mtry, prune=prune, rm.na=rm.na,
 					verbose=FALSE, verbose.detail=FALSE)
@@ -2215,8 +2215,8 @@ hlaClose <- function(model)
 	stopifnot(inherits(model, "hlaAttrBagClass"))
 
 	# class handler
-	rv <- .C("PONG_Close", model$model, err=integer(1),
-		NAOK = TRUE, PACKAGE = "PONG")
+	rv <- .C("PONG2_Close", model$model, err=integer(1),
+		NAOK = TRUE, PACKAGE = "PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 
 	# output
@@ -2246,7 +2246,7 @@ hlaCheckSNPs <- function(model, object,
 	# show information
 	if (verbose)
 	{
-		cat("The PONG model:\n")
+		cat("The PONG2 model:\n")
 		cat(sprintf("\tThere are %d SNP predictors in total.\n",
 			length(model$snp.id)))
 		cat(sprintf("\tThere are %d individual classifiers.\n",
@@ -2292,65 +2292,65 @@ hlaCheckSNPs <- function(model, object,
 # Predict KIR3DL1/S1 alleles from unphased SNP data
 #
 
-predict.hlaAttrBagClass <- function (object, snp, cl = FALSE, type = c("response+dosage", 
-    "response", "prob", "response+prob"), vote = c("prob", "majority"), 
-    allele.check = TRUE, match.type = c("Position", "Pos+Allele", 
-        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = TRUE, 
-    verbose.match = TRUE, ...) 
+predict.hlaAttrBagClass <- function (object, snp, cl = FALSE, type = c("response+dosage",
+    "response", "prob", "response+prob"), vote = c("prob", "majority"),
+    allele.check = TRUE, match.type = c("Position", "Pos+Allele",
+        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = TRUE,
+    verbose.match = TRUE, ...)
 {
     stopifnot(inherits(object, "hlaAttrBagClass"))
-    hlaPredict(object, snp, cl, type, vote, allele.check, match.type, 
+    hlaPredict(object, snp, cl, type, vote, allele.check, match.type,
         same.strand, verbose, verbose.match)
 }
 
-kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage", 
-    "response", "prob", "response+prob"), vote = c("prob", "majority"), 
-    allele.check = TRUE, match.type = c("Position", "Pos+Allele", 
-        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = TRUE, 
-    verbose.match = TRUE) 
+kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
+    "response", "prob", "response+prob"), vote = c("prob", "majority"),
+    allele.check = TRUE, match.type = c("Position", "Pos+Allele",
+        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = TRUE,
+    verbose.match = TRUE)
 {
     stopifnot(inherits(object, "hlaAttrBagClass"))
-    stopifnot(is.logical(cl) | is.numeric(cl) | inherits(cl, 
+    stopifnot(is.logical(cl) | is.numeric(cl) | inherits(cl,
         "cluster"))
-    stopifnot(is.logical(allele.check), length(allele.check) == 
+    stopifnot(is.logical(allele.check), length(allele.check) ==
         1L)
-    stopifnot(is.logical(same.strand), length(same.strand) == 
+    stopifnot(is.logical(same.strand), length(same.strand) ==
         1L)
     stopifnot(is.logical(verbose), length(verbose) == 1L)
-    stopifnot(is.logical(verbose.match), length(verbose.match) == 
+    stopifnot(is.logical(verbose.match), length(verbose.match) ==
         1L)
     type <- match.arg(type)
     vote <- match.arg(vote)
     match.type <- match.arg(match.type)
     vote_method <- match(vote, c("prob", "majority"))
     if (inherits(cl, "cluster")) {
-        if (!requireNamespace("parallel", quietly = TRUE)) 
+        if (!requireNamespace("parallel", quietly = TRUE))
             stop("The `parallel' package should be installed.")
-        if (length(cl) <= 1L) 
+        if (length(cl) <= 1L)
             cl <- FALSE
     }
-    if (!is.null(object$appendix$warning)) 
+    if (!is.null(object$appendix$warning))
         warning(object$appendix$warning, immediate. = TRUE)
     if (verbose) {
         #CNum <- .Call(HIBAG_GetNumClassifiers, object$model)
-		CNum <- .C("PONG_GetNumClassifiers", object$model, CNum = integer(1),
-			err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+		CNum <- .C("PONG2_GetNumClassifiers", object$model, CNum = integer(1),
+			err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 
         s <- object$hla.allele
-        if (length(s) > 3L) 
+        if (length(s) > 3L)
             s <- c(s[1:3], "...")
-        cat("PONG model for ", .hla_gene_name_string(object$hla.locus), 
-            ":\n", "    ", CNum$CNum, " individual classifier(s)", 
-            "\n", "    ", length(object$snp.id), " SNPs\n", "    ", 
-            length(object$hla.allele), " unique HLA alleles: ", 
+        cat("PONG2 model for ", .hla_gene_name_string(object$hla.locus),
+            ":\n", "    ", CNum$CNum, " individual classifier(s)",
+            "\n", "    ", length(object$snp.id), " SNPs\n", "    ",
+            length(object$hla.allele), " unique HLA alleles: ",
             paste(s, collapse = ", "), "\n", sep = "")
-        
+
 		cat("Prediction:\n")
-        if (vote_method == 1L) 
+        if (vote_method == 1L)
             cat("    based on the averaged posterior probabilities\n")
         else cat("    by voting from all individual classifiers\n")
         if (inherits(cl, "cluster")) {
-            cat("    run in parallel with ", length(cl), " compute node", 
+            cat("    run in parallel with ", length(cl), " compute node",
                 length(cl), "\n", sep = "")
         }
     }
@@ -2368,49 +2368,49 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
     }
     else {
         model.assembly <- as.character(object$assembly)[1L]
-        if (is.na(model.assembly)) 
+        if (is.na(model.assembly))
             model.assembly <- "unknown"
         geno.assembly <- as.character(snp$assembly)[1L]
-        if (is.na(geno.assembly)) 
+        if (is.na(geno.assembly))
             geno.assembly <- "unknown"
-        refstr <- sprintf("Model assembly: %s, SNP assembly: %s", 
+        refstr <- sprintf("Model assembly: %s, SNP assembly: %s",
             model.assembly, geno.assembly)
-        if (verbose) 
+        if (verbose)
             cat(refstr, "\n", sep = "")
         if (model.assembly != geno.assembly) {
             if (any(c(model.assembly, geno.assembly) %in% "unknown")) {
-                if (verbose) 
+                if (verbose)
                   message("The human genome references might not match!")
-                if (geno.assembly == "unknown") 
+                if (geno.assembly == "unknown")
                   assembly <- model.assembly
                 else assembly <- geno.assembly
             }
             else {
-                warning("The human genome references do not match! ", 
+                warning("The human genome references do not match! ",
                   refstr, ".", immediate. = TRUE)
                 assembly <- model.assembly
             }
         }
         else {
-            if (model.assembly != "unknown") 
+            if (model.assembly != "unknown")
                 assembly <- model.assembly
             else assembly <- "auto"
         }
         if (verbose && verbose.match) {
             cat("Matching the SNPs between the model and the test data:\n")
             tab <- NULL
-            for (tp in c("Position", "Pos+Allele", "RefSNP+Position", 
+            for (tp in c("Position", "Pos+Allele", "RefSNP+Position",
                 "RefSNP")) {
                 s1 <- hlaSNPID(object, tp)
                 s2 <- hlaSNPID(snp, tp)
                 s <- unique(intersect(s1, s2))
                 mcnt <- length(s1) - length(s)
-                d <- data.frame(c1 = paste0("   ", tp), c2 = sprintf("%d (%.1f%%)", 
-                  mcnt, mcnt/length(s1) * 100), c3 = ifelse(tp == 
+                d <- data.frame(c1 = paste0("   ", tp), c2 = sprintf("%d (%.1f%%)",
+                  mcnt, mcnt/length(s1) * 100), c3 = ifelse(tp ==
                   match.type, "*being used", ""), stringsAsFactors = FALSE)
                 tab <- rbind(tab, d)
             }
-            names(tab) <- c("match.type=\"--\"", "  missing SNPs #", 
+            names(tab) <- c("match.type=\"--\"", "  missing SNPs #",
                 "")
             tab[1L, 3L] <- paste(tab[1L, 3L], "[1]")
             tab[2L, 3L] <- paste(tab[2L, 3L], "[2]")
@@ -2418,13 +2418,13 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
             cat("      [1]: useful if ambiguous strands on array-based platforms\n")
             cat("      [2]: suggested if the model and test data have been matched to the same reference genome\n")
             s <- object$appendix$platform
-            if (is.null(s)) 
+            if (is.null(s))
                 s <- "not applicable"
             else s <- paste(s, collapse = ",")
             cat("    Model platform: ", s, "\n", sep = "")
         }
         else if (verbose) {
-            cat("Using match.type='", match.type, "' for SNP matching\n", 
+            cat("Using match.type='", match.type, "' for SNP matching\n",
                 sep = "")
         }
         geno.sampid <- snp$sample.id
@@ -2432,12 +2432,12 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         geno.id <- hlaSNPID(snp, match.type)
         flag <- FALSE
         if (length(obj.id) == length(geno.id)) {
-            if (all(obj.id == geno.id)) 
+            if (all(obj.id == geno.id))
                 flag <- TRUE
         }
         if (flag) {
             if (allele.check) {
-                snp <- hlaGenoSwitchStrand(snp, object, match.type, 
+                snp <- hlaGenoSwitchStrand(snp, object, match.type,
                   same.strand, verbose)$genotype
             }
             else {
@@ -2451,12 +2451,12 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
             snp.sel[duplicated(snp.sel)] <- NA_integer_
             snp.allele <- snp$snp.allele
             snp.allele[is.na(snp.allele)] <- ""
-            tmp <- list(genotype = snp$genotype[snp.sel, , drop = FALSE], 
-                sample.id = snp$sample.id, snp.id = object$snp.id, 
-                snp.position = object$snp.position, snp.allele = snp.allele[snp.sel], 
+            tmp <- list(genotype = snp$genotype[snp.sel, , drop = FALSE],
+                sample.id = snp$sample.id, snp.id = object$snp.id,
+                snp.position = object$snp.position, snp.allele = snp.allele[snp.sel],
                 assembly = snp$assembly)
             flag <- is.na(tmp$snp.allele)
-            tmp$snp.allele[flag] <- object$snp.allele[match(tmp$snp.id[flag], 
+            tmp$snp.allele[flag] <- object$snp.allele[match(tmp$snp.id[flag],
                 object$snp.id)]
             class(tmp) <- "hlaSNPGenoClass"
             missing.cnt <- sum(flag)
@@ -2464,11 +2464,11 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
                 stop("There is no overlapping of SNPs!")
             }
             else if (missing.cnt > 0.5 * length(obj.id)) {
-                warning("More than 50% of SNPs are missing!", 
+                warning("More than 50% of SNPs are missing!",
                   immediate. = TRUE)
             }
             if (allele.check) {
-                snp <- hlaGenoSwitchStrand(tmp, object, match.type, 
+                snp <- hlaGenoSwitchStrand(tmp, object, match.type,
                   same.strand, verbose)$genotype
             }
             else {
@@ -2477,7 +2477,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         }
     }
     if (dim(snp)[1L] != object$n.snp) {
-        stop("The number of SNPs is not valid, and it maybe due to duplicated 'snp.id' ", 
+        stop("The number of SNPs is not valid, and it maybe due to duplicated 'snp.id' ",
             "or incorrect dimension of genotype matrix.")
     }
     n.samp <- dim(snp)[2L]
@@ -2485,43 +2485,43 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
     if (verbose) {
         cat(sprintf("# of samples: %d\n", n.samp))
 		#Workaround for the following error: Error in .Call(HIBAG_Predict_Resp, object$model, as.integer(snp), n.samp,  :
-		#  "PONG_Kernel_Version" not available for .Call() for package "PONG"
-        #cat("CPU flags: ", .C("PONG_Kernel_Version", PACKAGE="PONG")[[2L]][1L], "\n", sep = "")
+		#  "PONG2_Kernel_Version" not available for .Call() for package "PONG2"
+        #cat("CPU flags: ", .C("PONG2_Kernel_Version", PACKAGE="PONG2")[[2L]][1L], "\n", sep = "")
     }
-	
+
     if (!inherits(cl, "cluster")) {
         nthread <- 1L
-        if (isTRUE(cl)) 
+        if (isTRUE(cl))
             nthread <- as.integer(defaultNumThreads())
-        if (is.numeric(cl)) 
+        if (is.numeric(cl))
             nthread <- cl[1L]
-        if (is.na(nthread) || nthread < 1L) 
+        if (is.na(nthread) || nthread < 1L)
             nthread <- 1L
         pm <- attr(cl, "proc_ptr")
         if (type %in% c("response", "response+dosage", "response+prob")) {
-            if (type == "response") 
+            if (type == "response")
 			{
-                rv <- .C("PONG_Predict_Resp", object$model, as.integer(snp),
+                rv <- .C("PONG2_Predict_Resp", object$model, as.integer(snp),
 					n.samp, as.integer(vote_method), as.logical(verbose),
 					H1=integer(n.samp), H2=integer(n.samp), prob=double(n.samp),
-					err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+					err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
             }
             else if (type == "response+dosage") {
-                rv <- .C("PONG_Predict_Resp_dosage", object$model, as.integer(snp),
+                rv <- .C("PONG2_Predict_Resp_dosage", object$model, as.integer(snp),
 					n.samp, as.integer(vote_method), as.logical(verbose),
-					H1=integer(n.samp), H2=integer(n.samp), prob=double(n.samp), 
+					H1=integer(n.samp), H2=integer(n.samp), prob=double(n.samp),
 					postprob=matrix(NaN, nrow=n.hla*(n.hla+1)/2, ncol=n.samp),
-					err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+					err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
             }
             else {
-                rv <- .C("PONG_Predict_Resp_Prob", object$model, as.integer(snp),
+                rv <- .C("PONG2_Predict_Resp_Prob", object$model, as.integer(snp),
 					n.samp, as.integer(vote_method), as.logical(verbose),
-					H1=integer(n.samp), H2=integer(n.samp), prob=double(n.samp), 
+					H1=integer(n.samp), H2=integer(n.samp), prob=double(n.samp),
 					postprob=matrix(NaN, nrow=n.hla*(n.hla+1)/2, ncol=n.samp),
-					err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+					err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
             }
-            res <- hlaAllele(geno.sampid, H1 = object$hla.allele[rv$H1 + 
-                1L], H2 = object$hla.allele[rv$H2 + 1L], locus = object$hla.locus, 
+            res <- hlaAllele(geno.sampid, H1 = object$hla.allele[rv$H1 +
+                1L], H2 = object$hla.allele[rv$H2 + 1L], locus = object$hla.locus,
                 prob = rv$prob, na.rm = FALSE, assembly = assembly)
             res$value$matching <- rv$matching
             if (!is.null(rv$dosage)) {
@@ -2532,56 +2532,56 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
             if (!is.null(rv$postprob)) {
                 res$postprob <- rv$postprob
                 colnames(res$postprob) <- geno.sampid
-                m <- outer(object$hla.allele, object$hla.allele, 
+                m <- outer(object$hla.allele, object$hla.allele,
                   paste, sep = "/")
                 rownames(res$postprob) <- m[lower.tri(m, diag = TRUE)]
             }
             NA.cnt <- sum(is.na(res$value$allele1) | is.na(res$value$allele2))
         }
         else {
-            rv <- .Call(HIBAG_Predict_Resp_Prob, object$model, 
-                as.integer(snp), n.samp, vote_method, nthread, 
+            rv <- .Call(HIBAG_Predict_Resp_Prob, object$model,
+                as.integer(snp), n.samp, vote_method, nthread,
                 verbose, pm)
-            names(rv) <- c("H1", "H2", "prob", "matching", "dosage", 
+            names(rv) <- c("H1", "H2", "prob", "matching", "dosage",
                 "postprob")
             res <- rv$postprob
             colnames(res) <- geno.sampid
-            m <- outer(object$hla.allele, object$hla.allele, 
+            m <- outer(object$hla.allele, object$hla.allele,
                 paste, sep = "/")
             rownames(res) <- m[lower.tri(m, diag = TRUE)]
             NA.cnt <- sum(colSums(res) <= 0L, na.rm = TRUE)
         }
     }
     else {
-        rv <- parallel::clusterApply(cl = cl, parallel::splitIndices(n.samp, 
+        rv <- parallel::clusterApply(cl = cl, parallel::splitIndices(n.samp,
             length(cl)), fun = function(i, mobj, snp, type, vote) {
             if (length(i) > 0L) {
                 library(HIBAG)
                 m <- hlaModelFromObj(mobj)
                 on.exit(hlaClose(m))
-                hlaPredict(m, snp[, i], type = type, vote = vote, 
+                hlaPredict(m, snp[, i], type = type, vote = vote,
                   verbose = FALSE)
             }
             else NULL
-        }, mobj = hlaModelToObj(object), snp = snp, type = type, 
+        }, mobj = hlaModelToObj(object), snp = snp, type = type,
             vote = vote)
         if (type %in% c("response", "response+dosage", "response+prob")) {
             res <- rv[[1L]]
             for (i in 2L:length(rv)) {
-                if (!is.null(rv[[i]])) 
+                if (!is.null(rv[[i]]))
                   res <- hlaCombineAllele(res, rv[[i]])
             }
             res$value$sample.id <- geno.sampid
-            if (!is.null(res$dosage)) 
+            if (!is.null(res$dosage))
                 colnames(res$dosage) <- geno.sampid
-            if (!is.null(res$postprob)) 
+            if (!is.null(res$postprob))
                 colnames(res$postprob) <- geno.sampid
             NA.cnt <- sum(is.na(res$value$allele1) | is.na(res$value$allele2))
         }
         else {
             res <- rv[[1L]]
             for (i in 2L:length(rv)) {
-                if (!is.null(rv[[i]])) 
+                if (!is.null(rv[[i]]))
                   res <- cbind(res, rv[[i]])
             }
             colnames(res) <- geno.sampid
@@ -2589,8 +2589,8 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         }
     }
     if (NA.cnt > 0L) {
-        warning("No prediction output for ", NA.cnt, " individual", 
-            .plural(NA.cnt), " (possibly due to missing SNPs).", 
+        warning("No prediction output for ", NA.cnt, " individual",
+            .plural(NA.cnt), " (possibly due to missing SNPs).",
             immediate. = TRUE)
     }
     res
@@ -2747,8 +2747,8 @@ hlaModelToObj <- function(model)
 	stopifnot(inherits(model, "hlaAttrBagClass"))
 
 	# call, get the number of classifiers
-	rv <- .C("PONG_GetNumClassifiers", model$model, CNum = integer(1),
-		err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+	rv <- .C("PONG2_GetNumClassifiers", model$model, CNum = integer(1),
+		err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 
 	# for each tree
@@ -2756,17 +2756,17 @@ hlaModelToObj <- function(model)
 	for (i in 1:length(res))
 	{
 		# call, get the number of haplotypes
-		rv <- .C("PONG_Idv_GetNumHaplo", model$model, as.integer(i),
+		rv <- .C("PONG2_Idv_GetNumHaplo", model$model, as.integer(i),
 			NumHaplo = integer(1), NumSNP = integer(1),
-			err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+			err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 		if (rv$err != 0) stop(hlaErrMsg())
 
 		# call, get freq. and haplotypes
-		rv <- .C("PONG_Classifier_GetHaplos", model$model, as.integer(i),
+		rv <- .C("PONG2_Classifier_GetHaplos", model$model, as.integer(i),
 			freq=double(rv$NumHaplo), hla=integer(rv$NumHaplo),
 			haplo=character(rv$NumHaplo), snpidx = integer(rv$NumSNP),
 			samp.num = integer(model$n.samp), acc = double(1),
-			err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+			err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 		if (rv$err != 0) stop(hlaErrMsg())
 
 		res[[i]] <- list(
@@ -2857,9 +2857,9 @@ hlaModelFromObj <- function(obj)
 	stopifnot(inherits(obj, "hlaAttrBagObj"))
 
 	# create an attribute bagging object
-	rv <- .C("PONG_New",
+	rv <- .C("PONG2_New",
 		as.integer(obj$n.samp), as.integer(obj$n.snp), length(obj$hla.allele),
-		model = integer(1), err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+		model = integer(1), err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 	if (rv$err != 0) stop(hlaErrMsg())
 	ABmodel <- rv$model
 
@@ -2873,11 +2873,11 @@ hlaModelFromObj <- function(obj)
 			snum <- rep(as.integer(1), obj$n.samp)
 		else
 			snum <- tree$samp.num
-		rv <- .C("PONG_NewClassifierHaplo", ABmodel, length(tree$snpidx),
+		rv <- .C("PONG2_NewClassifierHaplo", ABmodel, length(tree$snpidx),
 			as.integer(tree$snpidx-1), as.integer(snum), dim(tree$haplos)[1],
 			as.double(tree$haplos$freq), as.integer(hla),
 			as.character(tree$haplos$haplo), as.double(tree$outofbag.acc),
-			err=integer(1), NAOK=TRUE, PACKAGE="PONG")
+			err=integer(1), NAOK=TRUE, PACKAGE="PONG2")
 		if (rv$err != 0) stop(hlaErrMsg())
 	}
 
@@ -2980,7 +2980,7 @@ summary.hlaAttrBagObj <- function(object, show=TRUE, ...)
 
 
 ##########################################################################
-# to finalize the PONG model
+# to finalize the PONG2 model
 #
 
 hlaPublish <- function(mobj, platform=NULL, information=NULL, warning=NULL,
@@ -3407,7 +3407,7 @@ hlaReport <- function(object, export.fn="", type=c("txt", "tex", "html"),
 			file=f, append=TRUE, sep="\n")
 
 		cat("<table id=\"TB-Acc\" class=\"tabular\" border=\"1\"  CELLSPACING=\"1\">",
-			"<tr>", 
+			"<tr>",
 				paste(paste("<th>", L1, " ", L2, "</th>", sep=""), collapse=" "),
 			"</tr>",
 			"<tr>",
@@ -3420,7 +3420,7 @@ hlaReport <- function(object, export.fn="", type=c("txt", "tex", "html"),
 
 		for (i in 1:nrow(d))
 		{
-			cat("<tr>", 
+			cat("<tr>",
 				paste(paste("<td>", d[i, ], "</td>", sep=""), collapse=" "),
 				"</tr>",
 				file=f, append=TRUE, sep="\n")
@@ -3567,7 +3567,7 @@ print.hlaAttrBagObj <- function(x, ...)
 
 hlaErrMsg <- function()
 {
-	rv <- .C("PONG_ErrMsg", msg=character(1), NAOK=TRUE, PACKAGE="PONG")
+	rv <- .C("PONG2_ErrMsg", msg=character(1), NAOK=TRUE, PACKAGE="PONG2")
 	rv$msg
 }
 
@@ -3576,24 +3576,81 @@ hlaErrMsg <- function()
 #######################################################################
 # Internal R library functions
 #######################################################################
+
+setup_PONG2 <- function() {
+  # Get installation directory
+  pkg_dir <- system.file(package = "PONG2")
+
+  # Check if we're actually installed (not just sourced)
+  if (pkg_dir == "") {
+    packageStartupMessage("PONG2: Development mode - skipping binary installation")
+    return(invisible(NULL))
+  }
+
+  # Define paths
+  scripts_dir <- file.path(pkg_dir, "scripts")
+  target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
+  cli_name <- "pong2"
+
+  # Make scripts executable
+  if (dir.exists(scripts_dir)) {
+    tryCatch({
+      # Make all scripts executable (including PONG2 without .sh extension)
+      scripts <- list.files(scripts_dir,
+                            pattern = "\\.sh$|^pong2$",
+                            full.names = TRUE)
+      Sys.chmod(scripts, mode = "0755")
+
+      # Install main CLI tool
+      cli_source <- file.path(scripts_dir, "pong2")
+      if (file.exists(cli_source)) {
+        if (!dir.exists(target_bin_dir)) {
+          dir.create(target_bin_dir, recursive = TRUE, mode = "0755")
+        }
+        cli_target <- file.path(target_bin_dir, cli_name)
+        file.copy(cli_source, cli_target, overwrite = TRUE)
+        Sys.chmod(cli_target, mode = "0755")
+
+        # Check PATH
+        if (!grepl(paste0(":", target_bin_dir, "|", target_bin_dir, ":"),
+                   Sys.getenv("PATH"))) {
+          packageStartupMessage(
+            "PONG2: Please add '", target_bin_dir, "' to your PATH:\n",
+            "  export PATH=\"", target_bin_dir, ":$PATH\""
+          )
+        }
+      }
+    }, error = function(e) {
+      packageStartupMessage("PONG2: Installation warning - ", e$message)
+    })
+  }
+}
+
+
 #' @export
 .onAttach <- function(lib, pkg)
 {
-	# initialize PONG
-	rv <- .C("PONG_Init", SSE.Flag=integer(1), PACKAGE="PONG")
+  message("** initializing environment")
+	rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
 	registerS3method("predict", "hlaAttrBagClass", predict.hlaAttrBagClass)
 	# information
-	packageStartupMessage(
-		"PONG (KIR3DL1/S1 Genotype Imputation with Attribute Bagging): v1.0.0")
+	packageStartupMessage("PONG2 (Genotype Imputation with Attribute Bagging): v2.0.0")
 	if (rv$SSE.Flag != 0)
 		packageStartupMessage("Supported by Streaming SIMD Extensions 2 (SSE2)")
 
 	TRUE
 }
+
+
 #' @export
 .Last.lib <- function(libpath)
 {
-	# finalize PONG
-	rv <- .C("PONG_Done", PACKAGE="PONG")
+	# finalize PONG2
+	rv <- .C("PONG2_Done", PACKAGE="PONG2")
 	TRUE
+}
+
+#' @export
+.onLoad <- function(lib, pkg){
+  setup_PONG2()
 }

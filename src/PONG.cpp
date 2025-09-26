@@ -25,7 +25,7 @@
 // along with HIBAG.
 // If not, see <http://www.gnu.org/licenses/>.
 //
-// The program PONG is a modified version of HIBAG
+// The program PONG2 is a modified version of HIBAG
 // Genelle F Harrison (GenelleFH@gmail.com)
 //
 
@@ -101,7 +101,7 @@ struct TAlleleItem
 	vector<int> Index;
 	vector<string> Idx_Suffix;
 	int list_index;
-	
+
 	TAlleleItem(const char *str, int _idx)
 	{
 		string num, suffix;
@@ -155,7 +155,7 @@ static bool sortfn(const TAlleleItem *I1, const TAlleleItem *I2)
 			} else if (I1->Idx_Suffix[i] > I2->Idx_Suffix[i])
 			{
 				return false;
-			}		
+			}
 		}
 	}
 
@@ -170,7 +170,7 @@ static bool sortfn(const TAlleleItem *I1, const TAlleleItem *I2)
  *  \param outstr     the pointer to output allele strings
  *  \param out_err    output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_SortAlleleStr(int *n_hla, char *const hlastr[],
+DLLEXPORT void PONG2_SortAlleleStr(int *n_hla, char *const hlastr[],
 	char *outstr[], LongBool *out_err)
 {
 	CORETRY
@@ -222,7 +222,7 @@ static inline void split_allele(const char *txt, string &allele1, string &allele
 		for (unsigned int i=0; i < allele1.size(); i++)
 			allele1[i] = toupper(allele1[i]);
 
-		// the second allele	
+		// the second allele
 		allele2 = p + 1;
 		for (unsigned int i=0; i < allele2.size(); i++)
 			allele2[i] = toupper(allele2[i]);
@@ -235,7 +235,7 @@ static inline void split_allele(const char *txt, string &allele1, string &allele
 	}
 }
 
-DLLEXPORT void PONG_AlleleStrand(char *allele1[], double afreq1[], int I1[],
+DLLEXPORT void PONG2_AlleleStrand(char *allele1[], double afreq1[], int I1[],
 	char *allele2[], double afreq2[], int I2[],
 	int *if_same_strand, int *n,
 	LongBool out_flag[], int *out_n_stand_amb, int *out_n_mismatch,
@@ -347,37 +347,37 @@ DLLEXPORT void PONG_AlleleStrand(char *allele1[], double afreq1[], int I1[],
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 //
-// PONG: Attribute Bagging method
+// PONG2: Attribute Bagging method
 //
 
 /// the number of attribute bagging models allowed
 #define MODEL_NUM_LIMIT 256
 /// the model container
-static CAttrBag_Model* _PONG_MODELS_[MODEL_NUM_LIMIT];
+static CAttrBag_Model* _PONG2_MODELS_[MODEL_NUM_LIMIT];
 
 /// need a new model
-static int _Need_New_PONG_Model()
+static int _Need_New_PONG2_Model()
 {
 	for (int i=0; i < MODEL_NUM_LIMIT; i++)
-		if (_PONG_MODELS_[i] == NULL) return i;
-	throw ErrHLA("No memory space to store a new PONG model, "
-		"please call \"hlaClose\" to release unused PONG models.");
+		if (_PONG2_MODELS_[i] == NULL) return i;
+	throw ErrHLA("No memory space to store a new PONG2 model, "
+		"please call \"hlaClose\" to release unused PONG2 models.");
 }
 
 /// check the model
-static void _Check_PONG_Model(int model)
+static void _Check_PONG2_Model(int model)
 {
 	if ((0 <= model) && (model < MODEL_NUM_LIMIT))
 	{
-		if (_PONG_MODELS_[model] != NULL)
+		if (_PONG2_MODELS_[model] != NULL)
 			return;
 	}
-	throw ErrHLA("The handle of PONG model has been closed.");
+	throw ErrHLA("The handle of PONG2 model has been closed.");
 }
 
 
 /**
- *  to build a PONG model
+ *  to build a PONG2 model
  *
  *  \param nSNP       the number of SNPs
  *  \param nSamp      the number of samples
@@ -385,20 +385,20 @@ static void _Check_PONG_Model(int model)
  *  \param out_Model  output the model index
  *  \param out_err    output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_New(int *nSamp, int *nSNP, int *nHLA, int *out_Model,
+DLLEXPORT void PONG2_New(int *nSamp, int *nSNP, int *nHLA, int *out_Model,
 	LongBool *out_err)
 {
 	CORETRY
-		int model = _Need_New_PONG_Model();
-		_PONG_MODELS_[model] = new CAttrBag_Model;
-		_PONG_MODELS_[model]->InitTraining(*nSNP, *nSamp, *nHLA);
+		int model = _Need_New_PONG2_Model();
+		_PONG2_MODELS_[model] = new CAttrBag_Model;
+		_PONG2_MODELS_[model]->InitTraining(*nSNP, *nSamp, *nHLA);
 		*out_Model = model;
 		*out_err = 0;
 	CORECATCH(*out_err = 1)
 }
 
 /**
- *  to build a PONG model
+ *  to build a PONG2 model
  *  \param nSNP       the number of SNPs
  *  \param nSamp      the number of samples
  *  \param snp_geno   the SNP genotypes, (0 -- BB, 1 -- AB, 2 -- AA, other -- missing value)
@@ -408,13 +408,13 @@ DLLEXPORT void PONG_New(int *nSamp, int *nSNP, int *nHLA, int *out_Model,
  *  \param out_Model  output the model index
  *  \param out_err    output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Training(int *nSNP, int *nSamp, int *snp_geno, int *nHLA,
+DLLEXPORT void PONG2_Training(int *nSNP, int *nSamp, int *snp_geno, int *nHLA,
 	int *H1, int *H2, int *out_Model, LongBool *out_err)
 {
 	CORETRY
-		int model = _Need_New_PONG_Model();
-		_PONG_MODELS_[model] = new CAttrBag_Model;
-		_PONG_MODELS_[model]->InitTraining(*nSNP, *nSamp, snp_geno, *nHLA, H1, H2);
+		int model = _Need_New_PONG2_Model();
+		_PONG2_MODELS_[model] = new CAttrBag_Model;
+		_PONG2_MODELS_[model]->InitTraining(*nSNP, *nSamp, snp_geno, *nHLA, H1, H2);
 		*out_Model = model;
 		*out_err = 0;
 	CORECATCH(*out_err = 1)
@@ -422,17 +422,17 @@ DLLEXPORT void PONG_Training(int *nSNP, int *nSamp, int *snp_geno, int *nHLA,
 
 
 /**
- *  to close an existing PONG model 
+ *  to close an existing PONG2 model
  *
  *  \param model      the model index
  *  \param out_err    output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Close(int *model, LongBool *out_err)
+DLLEXPORT void PONG2_Close(int *model, LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model* m = _PONG_MODELS_[*model];
-		_PONG_MODELS_[*model] = NULL;
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model* m = _PONG2_MODELS_[*model];
+		_PONG2_MODELS_[*model] = NULL;
 		delete m;
 		*out_err = 0;
 	CORECATCH(*out_err = 1)
@@ -450,14 +450,14 @@ DLLEXPORT void PONG_Close(int *model, LongBool *out_err)
  *  \param verbose_detail  show more information if TRUE
  *  \param out_err         output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_NewClassifiers(int *model, int *nclassifier, int *mtry,
+DLLEXPORT void PONG2_NewClassifiers(int *model, int *nclassifier, int *mtry,
 	LongBool *prune, LongBool *verbose, LongBool *verbose_detail,
 	LongBool *out_err)
 {
 	GetRNGstate();
 	CORETRY
-		_Check_PONG_Model(*model);
-		_PONG_MODELS_[*model]->BuildClassifiers(*nclassifier, *mtry,
+		_Check_PONG2_Model(*model);
+		_PONG2_MODELS_[*model]->BuildClassifiers(*nclassifier, *mtry,
 			*prune, *verbose, *verbose_detail);
 		*out_err = 0;
 	CORECATCH(*out_err = 1)
@@ -476,20 +476,20 @@ DLLEXPORT void PONG_NewClassifiers(int *model, int *nclassifier, int *mtry,
  *  \param out_Prob     the posterior probabilities
  *  \param out_err      output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Predict_Resp(int *model, int *GenoMat, int *nSamp,
+DLLEXPORT void PONG2_Predict_Resp(int *model, int *GenoMat, int *nSamp,
 	int *vote_method, LongBool *ShowInfo,
 	int out_H1[], int out_H2[], double out_Prob[], LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model &M = *_PONG_MODELS_[*model];
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model &M = *_PONG2_MODELS_[*model];
 
-	#if (PONG_FLOAT_TYPE_ID == 0)
+	#if (PONG2_FLOAT_TYPE_ID == 0)
 
 		M.PredictHLA(GenoMat, *nSamp, *vote_method, out_H1, out_H2, out_Prob,
 			NULL, *ShowInfo);
 
-	#elif (PONG_FLOAT_TYPE_ID == 1)
+	#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 		vector<float> tmp(*nSamp);
 		M.PredictHLA(GenoMat, *nSamp, *vote_method, out_H1, out_H2, &tmp[0],
@@ -497,7 +497,7 @@ DLLEXPORT void PONG_Predict_Resp(int *model, int *GenoMat, int *nSamp,
 		for (int i=0; i < *nSamp; i++) out_Prob[i] = tmp[i];
 
 	#else
-	#  error "Invalid PONG_FLOAT_TYPE_ID"
+	#  error "Invalid PONG2_FLOAT_TYPE_ID"
 	#endif
 
 		*out_err = 0;
@@ -516,18 +516,18 @@ DLLEXPORT void PONG_Predict_Resp(int *model, int *GenoMat, int *nSamp,
  *  \param out_Prob     the posterior probabilities
  *  \param out_err      output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Predict_Prob(int *model, int *GenoMat, int *nSamp,
+DLLEXPORT void PONG2_Predict_Prob(int *model, int *GenoMat, int *nSamp,
 	int *vote_method, LongBool *ShowInfo, double out_Prob[], LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model &M = *_PONG_MODELS_[*model];
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model &M = *_PONG2_MODELS_[*model];
 
-	#if (PONG_FLOAT_TYPE_ID == 0)
+	#if (PONG2_FLOAT_TYPE_ID == 0)
 
 		M.PredictHLA_Prob(GenoMat, *nSamp, *vote_method, out_Prob, *ShowInfo);
 
-	#elif (PONG_FLOAT_TYPE_ID == 1)
+	#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 		const int n = M.nHLA()*(M.nHLA()+1) / 2;
 		vector<float> tmp(n);
@@ -535,7 +535,7 @@ DLLEXPORT void PONG_Predict_Prob(int *model, int *GenoMat, int *nSamp,
 		for (int i=0; i < n; i++) out_Prob[i] = tmp[i];
 
 	#else
-	#  error "Invalid PONG_FLOAT_TYPE_ID"
+	#  error "Invalid PONG2_FLOAT_TYPE_ID"
 	#endif
 
 		*out_err = 0;
@@ -554,21 +554,21 @@ DLLEXPORT void PONG_Predict_Prob(int *model, int *GenoMat, int *nSamp,
  *  \param out_Prob     the posterior probabilities
  *  \param out_err      output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Predict_Resp_Prob(int *model, int *GenoMat, int *nSamp,
+DLLEXPORT void PONG2_Predict_Resp_Prob(int *model, int *GenoMat, int *nSamp,
 	int *vote_method, LongBool *ShowInfo,
 	int out_H1[], int out_H2[], double out_MaxProb[],
 	double out_Prob[], LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model &M = *_PONG_MODELS_[*model];
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model &M = *_PONG2_MODELS_[*model];
 
-	#if (PONG_FLOAT_TYPE_ID == 0)
+	#if (PONG2_FLOAT_TYPE_ID == 0)
 
 		M.PredictHLA(GenoMat, *nSamp, *vote_method, out_H1, out_H2,
 			out_MaxProb, out_Prob, *ShowInfo);
 
-	#elif (PONG_FLOAT_TYPE_ID == 1)
+	#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 		vector<float> tmp(*nSamp);
 		const int n = M.nHLA()*(M.nHLA()+1) / 2;
@@ -579,7 +579,7 @@ DLLEXPORT void PONG_Predict_Resp_Prob(int *model, int *GenoMat, int *nSamp,
 		for (int i=0; i < n; i++) out_Prob[i] = tmp_d[i];
 
 	#else
-	#  error "Invalid PONG_FLOAT_TYPE_ID"
+	#  error "Invalid PONG2_FLOAT_TYPE_ID"
 	#endif
 
 		*out_err = 0;
@@ -600,19 +600,19 @@ DLLEXPORT void PONG_Predict_Resp_Prob(int *model, int *GenoMat, int *nSamp,
  *  \param acc          the out-of-bag accuracy
  *  \param out_err      output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_NewClassifierHaplo(int *model, int *n_snp, int snpidx[],
+DLLEXPORT void PONG2_NewClassifierHaplo(int *model, int *n_snp, int snpidx[],
 	int samp_num[], int *n_haplo, double *freq, int *hla, char *haplo[],
 	double *acc, LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Classifier *I = _PONG_MODELS_[*model]->NewClassifierAllSamp();
+		_Check_PONG2_Model(*model);
+		CAttrBag_Classifier *I = _PONG2_MODELS_[*model]->NewClassifierAllSamp();
 
-	#if (PONG_FLOAT_TYPE_ID == 0)
+	#if (PONG2_FLOAT_TYPE_ID == 0)
 
 		I->Assign(*n_snp, snpidx, samp_num, *n_haplo, freq, hla, haplo, acc);
 
-	#elif (PONG_FLOAT_TYPE_ID == 1)
+	#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 		float acc_float = *acc;
 		vector<float> tmp(*n_haplo);
@@ -621,7 +621,7 @@ DLLEXPORT void PONG_NewClassifierHaplo(int *model, int *n_snp, int snpidx[],
 			&acc_float);
 
 	#else
-	#  error "Invalid PONG_FLOAT_TYPE_ID"
+	#  error "Invalid PONG2_FLOAT_TYPE_ID"
 	#endif
 
 		*out_err = 0;
@@ -636,11 +636,11 @@ DLLEXPORT void PONG_NewClassifierHaplo(int *model, int *n_snp, int snpidx[],
  *  \param out_Num      output the number of individual classifiers
  *  \param out_err      output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_GetNumClassifiers(int *model, int *out_Num, LongBool *out_err)
+DLLEXPORT void PONG2_GetNumClassifiers(int *model, int *out_Num, LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		*out_Num = _PONG_MODELS_[*model]->ClassifierList().size();
+		_Check_PONG2_Model(*model);
+		*out_Num = _PONG2_MODELS_[*model]->ClassifierList().size();
 		*out_err = 0;
 	CORECATCH(*out_err = 1)
 }
@@ -655,12 +655,12 @@ DLLEXPORT void PONG_GetNumClassifiers(int *model, int *out_Num, LongBool *out_er
  *  \param out_NumSNP    output the number of selected SNP markers
  *  \param out_err       output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Idv_GetNumHaplo(int *model, int *idx,
+DLLEXPORT void PONG2_Idv_GetNumHaplo(int *model, int *idx,
 	int *out_NumHaplo, int *out_NumSNP, LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model *AB = _PONG_MODELS_[*model];
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model *AB = _PONG2_MODELS_[*model];
 		*out_NumHaplo = AB->ClassifierList()[*idx - 1].nHaplo();
 		*out_NumSNP   = AB->ClassifierList()[*idx - 1].nSNP();
 		*out_err = 0;
@@ -680,13 +680,13 @@ DLLEXPORT void PONG_Idv_GetNumHaplo(int *model, int *idx,
  *  \param out_acc       output the out-of-bag accuracy
  *  \param out_err       output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Classifier_GetHaplos(int *model, int *idx,
+DLLEXPORT void PONG2_Classifier_GetHaplos(int *model, int *idx,
 	double out_freq[], int out_hla[], char *out_haplo[], int out_snpidx[], int out_samp_num[],
 	double *out_acc, LongBool *out_err)
 {
 	CORETRY
-		_Check_PONG_Model(*model);
-		CAttrBag_Model *AB = _PONG_MODELS_[*model];
+		_Check_PONG2_Model(*model);
+		CAttrBag_Model *AB = _PONG2_MODELS_[*model];
 
 		const CAttrBag_Classifier &Voter = AB->ClassifierList()[*idx - 1];
 		const vector< vector<THaplotype> > &List = Voter.Haplotype().List;
@@ -725,7 +725,7 @@ DLLEXPORT void PONG_Classifier_GetHaplos(int *model, int *idx,
  *  \param out_mat       the output confusion matrix
  *  \param out_err       output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_Confusion(int *n_hla, double *init_mat,
+DLLEXPORT void PONG2_Confusion(int *n_hla, double *init_mat,
 	int *n_DConfusion, int *D_mat, double *out_mat, double *tmp_mat,
 	LongBool *out_err)
 {
@@ -787,11 +787,11 @@ DLLEXPORT void PONG_Confusion(int *n_hla, double *init_mat,
  *  \param EM_RelTol        The reltol convergence tolerance
  *  \param Search_MaxNum    The max number of SNP markers in an individual classifier
 **/
-DLLEXPORT void PONG_GetParam(int *EM_MaxNum, double *EM_RelTol, int *Search_MaxNum)
+DLLEXPORT void PONG2_GetParam(int *EM_MaxNum, double *EM_RelTol, int *Search_MaxNum)
 {
 	*EM_MaxNum = EM_MaxNum_Iterations;
 	*EM_RelTol = EM_FuncRelTol;
-	*Search_MaxNum = PONG_MAXNUM_SNP_IN_CLASSIFIER;
+	*Search_MaxNum = PONG2_MAXNUM_SNP_IN_CLASSIFIER;
 }
 
 
@@ -802,7 +802,7 @@ DLLEXPORT void PONG_GetParam(int *EM_MaxNum, double *EM_RelTol, int *Search_MaxN
  *  \param EM_RelTol        The reltol convergence tolerance
  *  \param Search_MaxNum    The max number of SNP markers in an individual classifier
 **/
-DLLEXPORT void PONG_SetParam(int *EM_MaxNum, LongBool *If_EM_MaxNum,
+DLLEXPORT void PONG2_SetParam(int *EM_MaxNum, LongBool *If_EM_MaxNum,
 	double *EM_RelTol, LongBool *If_EM_RelTol,
 	int *Search_MaxNum, LongBool *If_Search_MaxNum)
 {
@@ -822,7 +822,7 @@ DLLEXPORT void PONG_SetParam(int *EM_MaxNum, LongBool *If_EM_MaxNum,
  *  \param out_SNPOrder  output the storage mode
  *  \param out_err       output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_BEDFlag(char **bedfn, int *out_SNPOrder, LongBool *out_err)
+DLLEXPORT void PONG2_BEDFlag(char **bedfn, int *out_SNPOrder, LongBool *out_err)
 {
 	CORETRY
 		ifstream file(*bedfn, ios::binary);
@@ -849,7 +849,7 @@ DLLEXPORT void PONG_BEDFlag(char **bedfn, int *out_SNPOrder, LongBool *out_err)
  *  \param out_geno      output genotypes
  *  \param out_err       output the error information, 0 -- no error, 1 -- an error exists
 **/
-DLLEXPORT void PONG_ConvBED(char **bedfn, int *n_samp, int *n_snp, int *n_save_snp,
+DLLEXPORT void PONG2_ConvBED(char **bedfn, int *n_samp, int *n_snp, int *n_save_snp,
 	LongBool *mode, LongBool *snp_flag, LongBool *verbose, int *out_geno,
 	LongBool *out_err)
 {
@@ -943,7 +943,7 @@ DLLEXPORT void PONG_ConvBED(char **bedfn, int *n_samp, int *n_snp, int *n_save_s
  *  \param lib_fn        the file name of GPU computing library
  *  \param prec          1 -- double, 2 -- single
 **/
-DLLEXPORT void PONG_GPU_Init(char **lib_fn, int *prec, int *out_err)
+DLLEXPORT void PONG2_GPU_Init(char **lib_fn, int *prec, int *out_err)
 {
 	CORETRY
 		Init_GPU_Support(lib_fn[0]);
@@ -958,7 +958,7 @@ DLLEXPORT void PONG_GPU_Init(char **lib_fn, int *prec, int *out_err)
  *  to get an error message
  *  \param Msg           the last error information
 **/
-DLLEXPORT void PONG_ErrMsg(char **Msg)
+DLLEXPORT void PONG2_ErrMsg(char **Msg)
 {
 	RStrAgn(_LastError.c_str(), Msg);
 }
@@ -968,15 +968,15 @@ DLLEXPORT void PONG_ErrMsg(char **Msg)
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 //
-// PONG: an attribute bagging method
+// PONG2: an attribute bagging method
 //
 
 /// initialize the package
-DLLEXPORT void PONG_Init(int *SSE)
+DLLEXPORT void PONG2_Init(int *SSE)
 {
-	memset((void*)_PONG_MODELS_, 0, sizeof(_PONG_MODELS_));
+	memset((void*)_PONG2_MODELS_, 0, sizeof(_PONG2_MODELS_));
 
-	#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+	#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 		*SSE = 1;
 	#else
 		*SSE = 0;
@@ -984,18 +984,18 @@ DLLEXPORT void PONG_Init(int *SSE)
 }
 
 /// finalize the package
-DLLEXPORT void PONG_Done()
+DLLEXPORT void PONG2_Done()
 {
 	try {
 
-	#ifdef PONG_ALLOW_GPU_SUPPORT
+	#ifdef PONG2_ALLOW_GPU_SUPPORT
 		Done_GPU_Support();
 	#endif
 
 		for (int i=0; i < MODEL_NUM_LIMIT; i++)
 		{
-			CAttrBag_Model* m = _PONG_MODELS_[i];
-			_PONG_MODELS_[i] = NULL;
+			CAttrBag_Model* m = _PONG2_MODELS_[i];
+			_PONG2_MODELS_[i] = NULL;
 			try {
 				delete m;
 			} catch(...) {}

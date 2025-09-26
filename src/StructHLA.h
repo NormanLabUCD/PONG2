@@ -33,7 +33,7 @@
 // Description    : HLA Genotype Imputation with Attribute Bagging
 // ===============================================================
 //
-// The program PONG is a modified version of HIBAG
+// The program PONG2 is a modified version of HIBAG
 // Genelle F Harrison (GenelleFH@gmail.com)
 //
 
@@ -49,7 +49,7 @@ extern "C" {
 
 
 /// Define macro for GPU computing
-#define PONG_ALLOW_GPU_SUPPORT
+#define PONG2_ALLOW_GPU_SUPPORT
 
 
 /// Define unsigned integers
@@ -60,14 +60,14 @@ typedef uint64_t  UINT64;
 
 
 /// The number of bytes or shorts for packed SNP genotypes
-#define PONG_PACKED_NUM_IN_UTYPE(x)  (((x)/4) + (((x) % 4)!=0 ? 1 : 0))
+#define PONG2_PACKED_NUM_IN_UTYPE(x)  (((x)/4) + (((x) % 4)!=0 ? 1 : 0))
 
 /// The max number of SNP markers in an individual classifier
-#define PONG_MAXNUM_SNP_IN_CLASSIFIER	256
+#define PONG2_MAXNUM_SNP_IN_CLASSIFIER	256
 
 /// The max number of bytes or shorts for packed SNP genotypes
-#define PONG_PACKED_UTYPE_MAXNUM_SNP		\
-	PONG_PACKED_NUM_IN_UTYPE(PONG_MAXNUM_SNP_IN_CLASSIFIER)
+#define PONG2_PACKED_UTYPE_MAXNUM_SNP		\
+	PONG2_PACKED_NUM_IN_UTYPE(PONG2_MAXNUM_SNP_IN_CLASSIFIER)
 
 
 
@@ -98,18 +98,18 @@ struct THLAType
 // ************************************************************************* //
 
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 /// Packed SNP haplotype structure: 4 SNPs in a byte / short
 struct TGPU_Haplotype_F32
 {
-	UINT8 PackedHaplo[PONG_PACKED_UTYPE_MAXNUM_SNP];
+	UINT8 PackedHaplo[PONG2_PACKED_UTYPE_MAXNUM_SNP];
 	float Frequency;
 };
 
 struct TGPU_Haplotype_F64
 {
-	UINT8 PackedHaplo[PONG_PACKED_UTYPE_MAXNUM_SNP];
+	UINT8 PackedHaplo[PONG2_PACKED_UTYPE_MAXNUM_SNP];
 	double Frequency;
 };
 
@@ -117,7 +117,7 @@ struct TGPU_Haplotype_F64
 /// Packed SNP genotype structure: 4 SNPs in a byte / short
 struct TGPU_Genotype
 {
-	UINT8 PackedSNPs[PONG_PACKED_UTYPE_MAXNUM_SNP];
+	UINT8 PackedSNPs[PONG2_PACKED_UTYPE_MAXNUM_SNP];
 	int BootstrapCount;
 	THLAType HLA;
 };

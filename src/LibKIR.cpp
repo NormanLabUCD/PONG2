@@ -33,24 +33,24 @@
 // Description    : HLA Genotype Imputation with Attribute Bagging
 // ===============================================================
 //
-// The program PONG is a modified version of HIBAG
+// The program PONG2 is a modified version of HIBAG
 // Genelle F Harrison (GenelleFH@gmail.com)
 //
 
 
 #if defined(unix) || defined(__unix) || defined(__unix__) || defined(macintosh) || defined(__APPLE__) || defined(__APPLE_CC__)
-#  define PONG_SYS_UNIX
+#  define PONG2_SYS_UNIX
 #elif defined(_WIN32) || defined(__WIN32__) || defined(WIN32) || defined(_WIN32_WCE)
-#  define PONG_SYS_WIN
+#  define PONG2_SYS_WIN
 #endif
 
 
 #include <StructHLA.h>
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
-#  if defined(PONG_SYS_UNIX)
+#ifdef PONG2_ALLOW_GPU_SUPPORT
+#  if defined(PONG2_SYS_UNIX)
 #    include <dlfcn.h>
-#  elif defined(PONG_SYS_WIN)
+#  elif defined(PONG2_SYS_WIN)
 #    include <windows.h>
 #  else
 #    error "not supported"
@@ -59,7 +59,7 @@
 
 #include <LibHLA.h>
 
-#define PONG_TIMING	0
+#define PONG2_TIMING	0
 // 0: No timing
 // 1: Spends ~90% of time on 'CVariableSelection::_OutOfBagAccuracy'
 //    and 'CVariableSelection::_InBagLogLik'
@@ -67,7 +67,7 @@
 // 2: ~9.2% of time on CAlg_EM::ExpectationMaximization
 // 3: ~0.5% of time on CAlg_EM::PrepareHaplotypes
 
-#if (PONG_TIMING > 0)
+#if (PONG2_TIMING > 0)
 #  include <time.h>
 #endif
 
@@ -104,7 +104,7 @@ static const TFLOAT PRUNE_RELTOL_LOGLIK = 0.1;
 
 
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 // whether run in double precision, depending on the device
 static bool _gpuRunInDoublePrecision = false;
@@ -148,15 +148,15 @@ static inline int RandomNum(int Range)
 #define FREQ_MUTANT(p, cnt)    ((p) * EXP_LOG_MIN_RARE_FREQ[cnt]);
 
 /// exp(cnt * log(MIN_RARE_FREQ)), cnt is the hamming distance
-static TFLOAT EXP_LOG_MIN_RARE_FREQ[PONG_MAXNUM_SNP_IN_CLASSIFIER*2];
+static TFLOAT EXP_LOG_MIN_RARE_FREQ[PONG2_MAXNUM_SNP_IN_CLASSIFIER*2];
 
 /// the hamming distance
 /// SNP genotypes (first dimension) and a pair of haplotypes (second dimension)
-static UINT8 _Packed_HammingDistance[256][256] PONG_SSE_VAR_ALIGN;
+static UINT8 _Packed_HammingDistance[256][256] PONG2_SSE_VAR_ALIGN;
 
-#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 // 32 -- the length of genotypes
-static __m128 _Packed_HamLenMask[32] PONG_SSE_VAR_ALIGN;
+static __m128 _Packed_HamLenMask[32] PONG2_SSE_VAR_ALIGN;
 #endif
 
 class CInit
@@ -164,10 +164,10 @@ class CInit
 public:
 	CInit()
 	{
-		for (int i=0; i < PONG_MAXNUM_SNP_IN_CLASSIFIER*2; i++)
+		for (int i=0; i < PONG2_MAXNUM_SNP_IN_CLASSIFIER*2; i++)
 			EXP_LOG_MIN_RARE_FREQ[i] = FLOAT_EXP(i * FLOAT_LOG(MIN_RARE_FREQ));
 		EXP_LOG_MIN_RARE_FREQ[0] = 1;
-		for (int i=0; i < PONG_MAXNUM_SNP_IN_CLASSIFIER*2; i++)
+		for (int i=0; i < PONG2_MAXNUM_SNP_IN_CLASSIFIER*2; i++)
 		{
 			if (!R_finite(EXP_LOG_MIN_RARE_FREQ[i]))
 				EXP_LOG_MIN_RARE_FREQ[i] = 0;
@@ -194,7 +194,7 @@ public:
 			}
 		}
 
-	#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+	#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 
 		// the hamming mask for length
 		memset(_Packed_HamLenMask, 0, sizeof(_Packed_HamLenMask));
@@ -218,7 +218,7 @@ static CInit _Init;
 
 // ************************************************************************* //
 
-#if (PONG_TIMING > 0)
+#if (PONG2_TIMING > 0)
 
 static clock_t _timing_ = 0;
 static clock_t _timing_last_point;
@@ -326,7 +326,7 @@ THaplotype::THaplotype(const char *str, const TFLOAT _freq)
 
 UINT8 THaplotype::GetAllele(const int idx) const
 {
-	PONG_CHECKING((idx<0) || (idx>=PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((idx<0) || (idx>=PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"THaplotype::GetAllele, invalid index.");
 	UINT8 ch = PackedHaplo[idx >> 2];
 	return (ch >> (2*(idx & 0x03))) & 0x01;
@@ -334,9 +334,9 @@ UINT8 THaplotype::GetAllele(const int idx) const
 
 void THaplotype::SetAllele(const int idx, UINT8 val)
 {
-	PONG_CHECKING((idx<0) || (idx>=PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((idx<0) || (idx>=PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"THaplotype::SetAllele, invalid index.");
-	PONG_CHECKING(val!=0 && val!=1,
+	PONG2_CHECKING(val!=0 && val!=1,
 		"THaplotype::SetAllele, the value should be 0 or 1.");
 	UTYPE &ch = PackedHaplo[idx >> 2];
 	UINT8 shift = (idx & 0x03)*2;
@@ -346,7 +346,7 @@ void THaplotype::SetAllele(const int idx, UINT8 val)
 
 string THaplotype::HaploToStr(const int Length) const
 {
-	PONG_CHECKING((Length<0) || (Length>PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((Length<0) || (Length>PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"THaplotype::HaploToStr, the length is invalid.");
 	string rv;
 	if (Length > 0)
@@ -360,12 +360,12 @@ string THaplotype::HaploToStr(const int Length) const
 
 void THaplotype::StrToHaplo(const string &str)
 {
-	PONG_CHECKING((int)str.size() > PONG_MAXNUM_SNP_IN_CLASSIFIER,
+	PONG2_CHECKING((int)str.size() > PONG2_MAXNUM_SNP_IN_CLASSIFIER,
 		"THaplotype::StrToHaplo, the input string is too long.");
 	for (int i=0; i < (int)str.size(); i++)
 	{
 		char ch = str[i];
-		PONG_CHECKING(ch!='0' && ch!='1',
+		PONG2_CHECKING(ch!='0' && ch!='1',
 			"THaplotype::StrToHaplo, the input string should be '0' or '1'");
 		SetAllele(i, ch-'0');
 	}
@@ -383,7 +383,7 @@ TGenotype::TGenotype()
 
 UINT8 TGenotype::GetSNP(const int idx) const
 {
-	PONG_CHECKING((idx<0) || (idx>=PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((idx<0) || (idx>=PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"TGenotype::GetSNP, invalid index.");
 	UINT8 ch = PackedSNPs[idx >> 2];
 	return (ch >> (2*(idx & 0x03))) & 0x03;
@@ -391,7 +391,7 @@ UINT8 TGenotype::GetSNP(const int idx) const
 
 void TGenotype::SetSNP(const int idx, int val)
 {
-	PONG_CHECKING((idx<0) || (idx>=PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((idx<0) || (idx>=PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"TGenotype::SetSNP, invalid index.");
 	if (val<0 || val>2) val = 3;
 	_SetSNP(idx, val);
@@ -407,7 +407,7 @@ void TGenotype::_SetSNP(const int idx, UINT8 val)
 
 string TGenotype::SNPToString(const int Length) const
 {
-	PONG_CHECKING(Length > PONG_MAXNUM_SNP_IN_CLASSIFIER,
+	PONG2_CHECKING(Length > PONG2_MAXNUM_SNP_IN_CLASSIFIER,
 		"TGenotype::SNPToString, the length is too large.");
 	string rv;
 	if (Length > 0)
@@ -424,12 +424,12 @@ string TGenotype::SNPToString(const int Length) const
 
 void TGenotype::StringToSNP(const string &str)
 {
-	PONG_CHECKING((int)str.size() > PONG_MAXNUM_SNP_IN_CLASSIFIER,
+	PONG2_CHECKING((int)str.size() > PONG2_MAXNUM_SNP_IN_CLASSIFIER,
 		"TGenotype::StringToSNP, the input string is too long.");
 	for (int i=0; i < (int)str.size(); i++)
 	{
 		char ch = str[i];
-		PONG_CHECKING(ch!='0' && ch!='1' && ch!='2' && ch!='?',
+		PONG2_CHECKING(ch!='0' && ch!='1' && ch!='2' && ch!='?',
 			"TGenotype::StringToSNP, the input string should be '0', '1', '2' or '?'.");
 		SetSNP(i, ch-'0');
 	}
@@ -437,14 +437,14 @@ void TGenotype::StringToSNP(const string &str)
 
 void TGenotype::SNPToInt(const int Length, int OutArray[]) const
 {
-	PONG_CHECKING((Length<0) || (Length>PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((Length<0) || (Length>PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"TGenotype::SNPToInt, the length is invalid.");
 	for (int i=0; i < Length; i++) OutArray[i] = GetSNP(i);
 }
 
 void TGenotype::IntToSNP(int Length, const int InBase[], const int Index[])
 {
-	PONG_CHECKING((Length<0) || (Length > PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((Length<0) || (Length > PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"TGenotype::IntToSNP, the length is invalid.");
 	UTYPE *p = &PackedSNPs[0];
 	for (; Length >= 4; Length-=4, Index+=4)
@@ -469,7 +469,7 @@ void TGenotype::IntToSNP(int Length, const int InBase[], const int Index[])
 int TGenotype::HammingDistance(int Length,
 	const THaplotype &H1, const THaplotype &H2) const
 {
-	PONG_CHECKING((Length<0) || (Length > PONG_MAXNUM_SNP_IN_CLASSIFIER),
+	PONG2_CHECKING((Length<0) || (Length > PONG2_MAXNUM_SNP_IN_CLASSIFIER),
 		"THaplotype::HammingDistance, the length is too large.");
 	return _HamDist(Length, H1, H2);
 }
@@ -482,10 +482,10 @@ inline int TGenotype::_HamDist(int Length,
 	const UTYPE *s = &PackedSNPs[0];
 	int rv = 0;
 
-#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 
 	// UTYPE = UINT16
-	static UINT16 offset[8] PONG_SSE_VAR_ALIGN;
+	static UINT16 offset[8] PONG2_SSE_VAR_ALIGN;
 
 	while (Length > 0)
 	{
@@ -590,7 +590,7 @@ CHaplotypeList::CHaplotypeList()
 
 void CHaplotypeList::DoubleHaplos(CHaplotypeList &OutHaplos) const
 {
-	PONG_CHECKING(Num_SNP >= PONG_MAXNUM_SNP_IN_CLASSIFIER,
+	PONG2_CHECKING(Num_SNP >= PONG2_MAXNUM_SNP_IN_CLASSIFIER,
 		"CHaplotypeList::DoubleHaplos, there are too many SNP markers.");
 
 	OutHaplos.Num_SNP = Num_SNP + 1;
@@ -600,7 +600,7 @@ void CHaplotypeList::DoubleHaplos(CHaplotypeList &OutHaplos) const
 	{
 		const vector<THaplotype> &src = List[i];
 		vector<THaplotype> &dst = OutHaplos.List[i];
-		
+
 		dst.resize(src.size()*2);
 		for (int j=0; j < (int)src.size(); j++)
 		{
@@ -617,14 +617,14 @@ void CHaplotypeList::DoubleHaplosInitFreq(CHaplotypeList &OutHaplos,
 {
 	static const char *msg =
 		"CHaplotypeList::DoubleHaplosInitFreq, the total number of haplotypes is not correct.";
-	PONG_CHECKING(List.size() != OutHaplos.List.size(), msg);
+	PONG2_CHECKING(List.size() != OutHaplos.List.size(), msg);
 
 	const TFLOAT p0 = 1-AFreq, p1 = AFreq;
 	for (int i=0; i < (int)List.size(); i++)
 	{
 		const vector<THaplotype> &src = List[i];
 		vector<THaplotype> &dst = OutHaplos.List[i];
-		PONG_CHECKING(dst.size() != src.size()*2, msg);
+		PONG2_CHECKING(dst.size() != src.size()*2, msg);
 
 		for (int j=0; j < (int)src.size(); j++)
 		{
@@ -646,7 +646,7 @@ void CHaplotypeList::MergeDoubleHaplos(const TFLOAT RareProb,
 		vector<THaplotype> &dst = OutHaplos.List[i];
 		dst.clear();
 		dst.reserve(src.size());
-		
+
 		for (int j=0; j < (int)src.size(); j += 2)
 		{
 			const THaplotype &p0 = src[j+0];
@@ -679,7 +679,7 @@ void CHaplotypeList::EraseDoubleHaplos(const TFLOAT RareProb,
 		vector<THaplotype> &dst = OutHaplos.List[i];
 		dst.clear();
 		dst.reserve(src.size());
-		
+
 		for (int j=0; j < (int)src.size(); j += 2)
 		{
 			const THaplotype &p0 = src[j+0];
@@ -758,7 +758,7 @@ void CHaplotypeList::Print()
 }
 
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 {
@@ -774,7 +774,7 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 
 
 	// haplotype list
-#if (PONG_FLOAT_TYPE_ID == 0)
+#if (PONG2_FLOAT_TYPE_ID == 0)
 
 	if (_gpuRunInDoublePrecision)
 	{
@@ -787,15 +787,15 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 		{
 			for (p = it->begin(); p != it->end(); p++)
 			{
-			#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+			#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 				// UTYPE = UINT16
 				UINT8  *d = &(pH->PackedHaplo[0]);
 				UINT16 *s = &(p->PackedHaplo[0]);
-				for (size_t n=PONG_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
+				for (size_t n=PONG2_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
 					*d ++ = *s ++;
 			#else
 				memcpy(&(pH->PackedHaplo[0]), &(p->PackedHaplo[0]),
-					PONG_PACKED_UTYPE_MAXNUM_SNP);
+					PONG2_PACKED_UTYPE_MAXNUM_SNP);
 			#endif
 				pH->Frequency = p->Frequency;
 				pH ++;
@@ -811,15 +811,15 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 		{
 			for (p = it->begin(); p != it->end(); p++)
 			{
-			#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+			#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 				// UTYPE = UINT16
 				UINT8  *d = &(pH->PackedHaplo[0]);
 				UINT16 *s = &(p->PackedHaplo[0]);
-				for (size_t n=PONG_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
+				for (size_t n=PONG2_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
 					*d ++ = *s ++;
 			#else
 				memcpy(&(pH->PackedHaplo[0]), &(p->PackedHaplo[0]),
-					PONG_PACKED_UTYPE_MAXNUM_SNP);
+					PONG2_PACKED_UTYPE_MAXNUM_SNP);
 			#endif
 				pH->Frequency = p->Frequency;
 				pH ++;
@@ -827,7 +827,7 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 		}
 	}
 
-#elif (PONG_FLOAT_TYPE_ID == 1)
+#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 	_HapList = new TGPU_Haplotype_F32[TotalNumOfHaplo()];
 	TGPU_Haplotype_F32 *pH = (TGPU_Haplotype_F32 *)_HapList;
@@ -838,15 +838,15 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 	{
 		for (p = it->begin(); p != it->end(); p++)
 		{
-		#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+		#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 			// UTYPE = UINT16
 			UINT8  *d = &(pH->PackedHaplo[0]);
 			UINT16 *s = &(p->PackedHaplo[0]);
-			for (size_t n=PONG_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
+			for (size_t n=PONG2_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
 				*d ++ = *s ++;
 		#else
 			memcpy(&(pH->PackedHaplo[0]), &(p->PackedHaplo[0]),
-				PONG_PACKED_UTYPE_MAXNUM_SNP);
+				PONG2_PACKED_UTYPE_MAXNUM_SNP);
 		#endif
 			pH->Frequency = p->Frequency;
 			pH ++;
@@ -854,20 +854,20 @@ void CHaplotypeList::InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 	}
 
 #else
-#  error "Invalid PONG_FLOAT_TYPE_ID"
+#  error "Invalid PONG2_FLOAT_TYPE_ID"
 #endif
 }
 #endif
 
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 inline void CHaplotypeList::FreqGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 {
 	// no worry if _HLA_HapIdx == NULL
 	delete[] _HLA_HapIdx;
 	_HLA_HapIdx = NULL;
 
-#if (PONG_FLOAT_TYPE_ID == 0)
+#if (PONG2_FLOAT_TYPE_ID == 0)
 
 	if (_HapList)
 	{
@@ -882,7 +882,7 @@ inline void CHaplotypeList::FreqGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 		_HapList = NULL;
 	}
 
-#elif (PONG_FLOAT_TYPE_ID == 1)
+#elif (PONG2_FLOAT_TYPE_ID == 1)
 
 	if (_HapList)
 	{
@@ -892,7 +892,7 @@ inline void CHaplotypeList::FreqGPUHostData(int *&_HLA_HapIdx, void *&_HapList)
 	}
 
 #else
-#  error "Invalid PONG_FLOAT_TYPE_ID"
+#  error "Invalid PONG2_FLOAT_TYPE_ID"
 #endif
 }
 #endif
@@ -929,11 +929,11 @@ CGenotypeList::CGenotypeList()
 
 void CGenotypeList::AddSNP(int IdxSNP, const CSNPGenoMatrix &SNPMat)
 {
-	PONG_CHECKING(nSamp() != SNPMat.Num_Total_Samp,
+	PONG2_CHECKING(nSamp() != SNPMat.Num_Total_Samp,
 		"CGenotypeList::AddSNP, SNPMat should have the same number of samples.");
-	PONG_CHECKING(Num_SNP >= PONG_MAXNUM_SNP_IN_CLASSIFIER,
+	PONG2_CHECKING(Num_SNP >= PONG2_MAXNUM_SNP_IN_CLASSIFIER,
 		"CGenotypeList::AddSNP, there are too many SNP markers.");
-	
+
 	const int *pG = SNPMat.pGeno + IdxSNP;
 	for (int i=0; i < SNPMat.Num_Total_Samp; i++)
 	{
@@ -947,7 +947,7 @@ void CGenotypeList::AddSNP(int IdxSNP, const CSNPGenoMatrix &SNPMat)
 
 void CGenotypeList::ReduceSNP()
 {
-	PONG_CHECKING(Num_SNP <= 0,
+	PONG2_CHECKING(Num_SNP <= 0,
 		"CGenotypeList::ReduceSNP, there is no SNP marker.");
 	Num_SNP --;
 }
@@ -1064,11 +1064,11 @@ void CAlg_EM::PrepareHaplotypes(const CHaplotypeList &CurHaplo,
 	const CGenotypeList &GenoList, const CHLATypeList &HLAList,
 	CHaplotypeList &NextHaplo)
 {
-#if (PONG_TIMING == 3)
+#if (PONG2_TIMING == 3)
 	_put_timing();
 #endif
 
-	PONG_CHECKING(GenoList.nSamp() != HLAList.nSamp(),
+	PONG2_CHECKING(GenoList.nSamp() != HLAList.nSamp(),
 		"CAlg_EM::PrepareHaplotypes, GenoList and HLAList should have the same number of samples.");
 
 	_SampHaploPair.clear();
@@ -1144,7 +1144,7 @@ void CAlg_EM::PrepareHaplotypes(const CHaplotypeList &CurHaplo,
 		}
 	}
 
-#if (PONG_TIMING == 3)
+#if (PONG2_TIMING == 3)
 	_inc_timing();
 #endif
 }
@@ -1153,9 +1153,9 @@ bool CAlg_EM::PrepareNewSNP(const int NewSNP, const CHaplotypeList &CurHaplo,
 	const CSNPGenoMatrix &SNPMat, CGenotypeList &GenoList,
 	CHaplotypeList &NextHaplo)
 {
-	PONG_CHECKING((NewSNP<0) || (NewSNP>=SNPMat.Num_Total_SNP),
+	PONG2_CHECKING((NewSNP<0) || (NewSNP>=SNPMat.Num_Total_SNP),
 		"CAlg_EM::PrepareNewSNP, invalid NewSNP.");
-	PONG_CHECKING(SNPMat.Num_Total_Samp != GenoList.nSamp(),
+	PONG2_CHECKING(SNPMat.Num_Total_Samp != GenoList.nSamp(),
 		"CAlg_EM::PrepareNewSNP, SNPMat and GenoList should have the same number of SNPs.");
 
 	// compute the allele frequency of NewSNP
@@ -1204,7 +1204,7 @@ bool CAlg_EM::PrepareNewSNP(const int NewSNP, const CHaplotypeList &CurHaplo,
 
 void CAlg_EM::ExpectationMaximization(CHaplotypeList &NextHaplo)
 {
-#if (PONG_TIMING == 2)
+#if (PONG2_TIMING == 2)
 	_put_timing();
 #endif
 
@@ -1268,7 +1268,7 @@ void CAlg_EM::ExpectationMaximization(CHaplotypeList &NextHaplo)
 		}
 	}
 
-#if (PONG_TIMING == 2)
+#if (PONG2_TIMING == 2)
 	_inc_timing();
 #endif
 }
@@ -1292,7 +1292,7 @@ CAlg_Prediction::CAlg_Prediction() { }
 
 void CAlg_Prediction::InitPrediction(int n_hla)
 {
-	PONG_CHECKING(n_hla<=0, "CAlg_Prediction::Init, n_hla error.");
+	PONG2_CHECKING(n_hla<=0, "CAlg_Prediction::Init, n_hla error.");
 
 	_nHLA = n_hla;
 	const int size = n_hla*(n_hla+1)/2;
@@ -1356,7 +1356,7 @@ void CAlg_Prediction::PredictPostProb(const CHaplotypeList &Haplo,
 	for (int h1=0; h1 < _nHLA; h1++)
 	{
 		const vector<THaplotype> &L1 = Haplo.List[h1];
-		
+
 		// diag value
 		*pProb = 0;
 		for (i1=L1.begin(); i1 != L1.end(); i1++)
@@ -1560,12 +1560,12 @@ CVariableSelection::CVariableSelection()
 void CVariableSelection::InitSelection(CSNPGenoMatrix &snpMat,
 	CHLATypeList &hlaList, const int _BootstrapCnt[])
 {
-	PONG_CHECKING(snpMat.Num_Total_Samp != hlaList.nSamp(),
+	PONG2_CHECKING(snpMat.Num_Total_Samp != hlaList.nSamp(),
 		"CVariableSelection::InitSelection, snpMat and hlaList should have the same number of samples.");
 
 	_SNPMat = &snpMat;
 	_HLAList = &hlaList;
-	
+
 	// initialize genotype list
 	_GenoList.List.resize(snpMat.Num_Total_Samp);
 	for (int i=0; i < snpMat.Num_Total_Samp; i++)
@@ -1600,16 +1600,16 @@ void CVariableSelection::_InitHaplotype(CHaplotypeList &Haplo)
 
 TFLOAT CVariableSelection::_OutOfBagAccuracy(CHaplotypeList &Haplo)
 {
-#if (PONG_TIMING == 1)
+#if (PONG2_TIMING == 1)
 	_put_timing();
 #endif
 
-	PONG_CHECKING(Haplo.Num_SNP != _GenoList.Num_SNP,
+	PONG2_CHECKING(Haplo.Num_SNP != _GenoList.Num_SNP,
 		"CVariableSelection::_OutOfBagAccuracy, Haplo and GenoList should have the same number of SNP markers.");
 
 	int TotalCnt, CorrectCnt;
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 	if (_gpuOutOfBagAcc_F64 || _gpuOutOfBagAcc_F32)
 	{
 		int *_HLA_HapIdx = NULL;
@@ -1651,11 +1651,11 @@ TFLOAT CVariableSelection::_OutOfBagAccuracy(CHaplotypeList &Haplo)
 			}
 		}
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 	}
 #endif
 
-#if (PONG_TIMING == 1)
+#if (PONG2_TIMING == 1)
 	_inc_timing();
 #endif
 
@@ -1664,14 +1664,14 @@ TFLOAT CVariableSelection::_OutOfBagAccuracy(CHaplotypeList &Haplo)
 
 TFLOAT CVariableSelection::_InBagLogLik(CHaplotypeList &Haplo)
 {
-#if (PONG_TIMING == 1)
+#if (PONG2_TIMING == 1)
 	_put_timing();
 #endif
 
-	PONG_CHECKING(Haplo.Num_SNP != _GenoList.Num_SNP,
+	PONG2_CHECKING(Haplo.Num_SNP != _GenoList.Num_SNP,
 		"CVariableSelection::_InBagLogLik, Haplo and GenoList should have the same number of SNP markers.");
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 #endif
 
@@ -1688,7 +1688,7 @@ TFLOAT CVariableSelection::_InBagLogLik(CHaplotypeList &Haplo)
 		}
 	}
 
-#if (PONG_TIMING == 1)
+#if (PONG2_TIMING == 1)
 	_inc_timing();
 #endif
 	return -2 * LogLik;
@@ -1713,7 +1713,7 @@ void CVariableSelection::Search(CBaseSampling &VarSampling,
 	CHaplotypeList NextHaplo, NextReducedHaplo, MinHaplo;
 
 	while ((VarSampling.TotalNum()>0) &&
-		((int)OutSNPIndex.size() < PONG_MAXNUM_SNP_IN_CLASSIFIER))
+		((int)OutSNPIndex.size() < PONG2_MAXNUM_SNP_IN_CLASSIFIER))
 	{
 		// prepare for growing the individual classifier
 		_EM.PrepareHaplotypes(OutHaplo, _GenoList, *_HLAList, NextHaplo);
@@ -1814,11 +1814,11 @@ void CVariableSelection::Search(CBaseSampling &VarSampling,
 			VarSampling.RemoveSelection();
 		}
 	}
-	
+
 	Out_Global_Max_OutOfBagAcc = Global_Max_OutOfBagAcc;
 }
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 int CVariableSelection::InitGPUHostData_OutOfBag(TGPU_Genotype *&_GList)
 {
@@ -1840,13 +1840,13 @@ int CVariableSelection::InitGPUHostData_OutOfBag(TGPU_Genotype *&_GList)
 		{
 			if (it->BootstrapCount <= 0)
 			{
-			#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+			#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 				UTYPE *s = it->PackedSNPs;
 				UINT8 *d = p->PackedSNPs;
-				for (size_t n=PONG_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
+				for (size_t n=PONG2_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
 					*d ++ = *s ++;
 			#else
-				memcpy(p->PackedSNPs, it->PackedSNPs, PONG_PACKED_UTYPE_MAXNUM_SNP);
+				memcpy(p->PackedSNPs, it->PackedSNPs, PONG2_PACKED_UTYPE_MAXNUM_SNP);
 			#endif
 				p->BootstrapCount = 0;
 				p->HLA = *pHLA;
@@ -1879,13 +1879,13 @@ int CVariableSelection::InitGPUHostData_InBag(TGPU_Genotype *&_GList)
 		{
 			if (it->BootstrapCount > 0)
 			{
-			#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+			#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 				UTYPE *s = it->PackedSNPs;
 				UINT8 *d = p->PackedSNPs;
-				for (size_t n=PONG_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
+				for (size_t n=PONG2_PACKED_UTYPE_MAXNUM_SNP; n > 0; n--)
 					*d ++ = *s ++;
 			#else
-				memcpy(p->PackedSNPs, it->PackedSNPs, PONG_PACKED_UTYPE_MAXNUM_SNP);
+				memcpy(p->PackedSNPs, it->PackedSNPs, PONG2_PACKED_UTYPE_MAXNUM_SNP);
 			#endif
 				p->BootstrapCount = it->BootstrapCount;
 				p->HLA = *pHLA;
@@ -1967,9 +1967,9 @@ CAttrBag_Model::CAttrBag_Model() { }
 
 void CAttrBag_Model::InitTraining(int n_snp, int n_samp, int n_hla)
 {
-	PONG_CHECKING(n_snp < 0, "CAttrBag_Model::InitTraining, n_snp error.")
-	PONG_CHECKING(n_samp < 0, "CAttrBag_Model::InitTraining, n_samp error.")
-	PONG_CHECKING(n_hla < 0, "CAttrBag_Model::InitTraining, n_hla error.")
+	PONG2_CHECKING(n_snp < 0, "CAttrBag_Model::InitTraining, n_snp error.")
+	PONG2_CHECKING(n_samp < 0, "CAttrBag_Model::InitTraining, n_samp error.")
+	PONG2_CHECKING(n_hla < 0, "CAttrBag_Model::InitTraining, n_hla error.")
 
 	_SNPMat.Num_Total_Samp = n_samp;
 	_SNPMat.Num_Total_SNP = n_snp;
@@ -1982,9 +1982,9 @@ void CAttrBag_Model::InitTraining(int n_snp, int n_samp, int n_hla)
 void CAttrBag_Model::InitTraining(int n_snp, int n_samp, int *snp_geno,
 	int n_hla, int *H1, int *H2)
 {
-	PONG_CHECKING(n_snp < 0, "CAttrBag_Model::InitTraining, n_snp error.")
-	PONG_CHECKING(n_samp < 0, "CAttrBag_Model::InitTraining, n_samp error.")
-	PONG_CHECKING(n_hla < 0, "CAttrBag_Model::InitTraining, n_hla error.")
+	PONG2_CHECKING(n_snp < 0, "CAttrBag_Model::InitTraining, n_snp error.")
+	PONG2_CHECKING(n_samp < 0, "CAttrBag_Model::InitTraining, n_samp error.")
+	PONG2_CHECKING(n_hla < 0, "CAttrBag_Model::InitTraining, n_hla error.")
 
 	_SNPMat.Num_Total_Samp = n_samp;
 	_SNPMat.Num_Total_SNP = n_snp;
@@ -1994,9 +1994,9 @@ void CAttrBag_Model::InitTraining(int n_snp, int n_samp, int *snp_geno,
 	_HLAList.Str_HLA_Allele.resize(n_hla);
 	for (int i=0; i < n_samp; i++)
 	{
-		PONG_CHECKING(H1[i]<0 || H1[i]>=n_hla,
+		PONG2_CHECKING(H1[i]<0 || H1[i]>=n_hla,
 			"CAttrBag_Model::InitTraining, H1 error.");
-		PONG_CHECKING(H2[i]<0 || H2[i]>=n_hla,
+		PONG2_CHECKING(H2[i]<0 || H2[i]>=n_hla,
 			"CAttrBag_Model::InitTraining, H2 error.");
 		_HLAList.List[i].Allele1 = H1[i];
 		_HLAList.List[i].Allele2 = H2[i];
@@ -2044,7 +2044,7 @@ CAttrBag_Classifier *CAttrBag_Model::NewClassifierAllSamp()
 void CAttrBag_Model::BuildClassifiers(int nclassifier, int mtry, bool prune,
 	bool verbose, bool verbose_detail)
 {
-#if (PONG_TIMING > 0)
+#if (PONG2_TIMING > 0)
 	_timing_ = 0;
 	clock_t _start_time = clock();
 #endif
@@ -2068,7 +2068,7 @@ void CAttrBag_Model::BuildClassifiers(int nclassifier, int mtry, bool prune,
 		}
 	}
 
-#if (PONG_TIMING > 0)
+#if (PONG2_TIMING > 0)
 	Rprintf("It took %0.2f seconds, in %0.2f%%.\n",
 		((TFLOAT)_timing_)/CLOCKS_PER_SEC,
 		((TFLOAT)_timing_) / (clock() - _start_time) * 100.0);
@@ -2213,7 +2213,7 @@ template <typename TO, typename FROM> TO nasty_cast(FROM f)
 	return u.t;
 }
 
-#if defined(PONG_SYS_UNIX)
+#if defined(PONG2_SYS_UNIX)
 
 	static void* GDS_Handle = NULL;
 	#define LOAD(var, type, name)	\
@@ -2221,7 +2221,7 @@ template <typename TO, typename FROM> TO nasty_cast(FROM f)
 		if ((err = dlerror()) != NULL) \
 			{ Done_GPU_Support(); throw ErrHLA(err); }
 
-#elif defined(PONG_SYS_WIN)
+#elif defined(PONG2_SYS_WIN)
 
 	static HMODULE GDS_Handle = NULL;
 	#define LOAD(var, type, name)	\
@@ -2239,13 +2239,13 @@ void HLA_LIB::Init_GPU_Support(const char *lib_fn)
 {
 	if (!GDS_Handle)
 	{
-	#if defined(PONG_SYS_UNIX)
+	#if defined(PONG2_SYS_UNIX)
 		// open dll
 		GDS_Handle = dlopen(lib_fn, RTLD_LAZY);
 		if (!GDS_Handle) throw ErrHLA(dlerror());
 		dlerror();  // Clear any existing error
 		const char *err;
-	#elif defined(PONG_SYS_WIN)
+	#elif defined(PONG2_SYS_WIN)
 		GDS_Handle = LoadLibrary(lib_fn);
 		if (GDS_Handle == NULL)
 		{
@@ -2283,7 +2283,7 @@ void HLA_LIB::Done_GPU_Support()
 	_gpuFinalize = NULL;
 	_gpuDeviceQuery = NULL;
 
-#if defined(PONG_SYS_UNIX)
+#if defined(PONG2_SYS_UNIX)
 
 	if (GDS_Handle)
 	{
@@ -2291,7 +2291,7 @@ void HLA_LIB::Done_GPU_Support()
 		GDS_Handle = NULL;
 	}
 
-#elif defined(PONG_SYS_WIN)
+#elif defined(PONG2_SYS_WIN)
 
 	if (GDS_Handle != NULL)
 	{

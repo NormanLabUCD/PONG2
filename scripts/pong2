@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+# PONG2 CLI - Production-Ready Version
+set -euo pipefail  # Strict mode: exit on error, unset variables, and pipeline failures
+
+# ========================
+# Installation Instruction
+# install.packages("programs/PONG2_1.0.0.tar", repos = NULL, type = "source")
+# R CMD INSTALL --library=/pl/active/gignouxlab/suraj/programs programs/PONG2_1.0.0.tar
+# R CMD INSTALL  programs/PONG2_1.0.0.tar
+# ========================
+
+# ========================
+# GLOBAL CONFIGURATION
+# ========================
+readonly VERSION="1.0.0"
+readonly DEFAULT_INPUT="data/input.csv"
+readonly DEFAULT_OUTPUT="results/"
+readonly R_REPO="https://cloud.r-project.org"
+
+# --------------------------
+# Color Definitions
+# --------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# --------------------------
+# Functions
+# --------------------------
+die() {
+  echo -e "${RED}ERROR: $*${NC}" >&2
+  exit 1
+}
+
+# Locate Rscript with validation
+RSCRIPT="$(command -v Rscript || { echo "ERROR: Rscript not found in PATH" >&2; exit 1; })"
+BIN_DIR="$HOME/bin"
+PONG2_root=$(Rscript -e 'cat(system.file(package="PONG2"))' 2>/dev/null)
+
+# Default variables
+THREADS=20
+FILTER=0.01
+FORCE="false"
+FILL_MISSING="false"
+
+declare -A pos=(
+    ["hg19"]="55000000 55400000 19"
+    ["hg38"]="54000000 55000000 chr19"
+)
+
+#Development mode
+#R CMD INSTALL --preclean --with-keep.source --no-multiarch .
+#packageVersion("PONG2")  # Should show dev version (e.g., 0.99.0.9000)
+#dev_mode=/home/suraju/projects/PONG22/inst/scripts
+command=""
+
+
+# ==================
+# CORE FUNCTIONS
+# ==================
+
+function load_package() {
+    error_msg="$("$RSCRIPT" -e "
+    if (!require('PONG2', quietly=TRUE)) {
+            stop('PONG2 package not found')
+    }")"
+
+
+[[ -n "$error_msg" ]] && { echo "ERROR: $error_msg" >&2; exit 1; }
+}
+
+function imputation() {
+   #echo $(load_package)
+    #Rscript -e 'PONG2::kirPredict'
+    #echo -e "${GREEN}Starting imputation...${NC}"
+    mkdir -p "$OUTPUT_DIR/tmp"
+    read start end chr <<< "${pos["$ASSEMBLY"]}"
+
+    #source "$PONG2_root/scripts/input_validation.sh"
+
+    filename=$(basename "$INPUT_FILE")
+
+    PREDICT_KIR=$($RSCRIPT  -e "cat(system.file('scripts', 'predict.R', package='PONG2'))")
+
+     #. Check Plink2 availability
+    "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
+
+     if [ "$ASSEMBLY" == "hg38" ]; then
+      plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$INPUT_FILE" --chr "$chr"  --from-bp "$start" --to-bp "$end" --make-bed --out "$OUTPUT_DIR/tmp/$filename" --silent  && sed -i 's/^/chr/' "$OUTPUT_DIR/tmp/$filename.bim"
+    else
+      plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$INPUT_FILE" --chr "$chr"  --from-bp "$start" --to-bp "$end" --make-bed --out "$OUTPUT_DIR/tmp/$filename" --silent
+    fi
+
+    #1. check SNP missingness against the model
+    echo "Matching input SNP postions and  with the KIR locus"
+     MISSINGNESS=$($RSCRIPT  -e "cat(system.file('scripts', 'snpmissingness.R', package='PONG2'))")
+     matching=$($RSCRIPT --vanilla "$MISSINGNESS" \
+    "$OUTPUT_DIR/tmp/$filename" \
+    "$OUTPUT_DIR"\
+    "$ASSEMBLY"\
+    "$LOCUS"\
+    "$FILTER"\
+    "$PONG2_root")
+
+    # Note that you cannot use --force fill-missing together
+    if (( $(echo "$matching < 0.6" | bc -l) )); then
+        echo "More than 50% of the SNPs are missing. "$RED" " "${NC}"
+        #printf "%bMatch percentage: %.2f%%%b\n" "$RED" "$(echo "$matching * 100" | bc -l)" "${NC}"
+
+        if [ "$FILL_MISSING" == "true" ]; then
+           echo "IMPUTE SNPs..."
+           # Check minimac and genomic reference build availability
+           "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "minimac4"
+
+            # Plink to vcf
+           if [ "$ASSEMBLY" == "hg38" ]; then
+              [ -f "$OUTPUT_DIR/tmp/$filename.vcf.gz" ] || plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$OUTPUT_DIR/tmp/$filename" --export vcf bgz  --out "$OUTPUT_DIR/tmp/$filename" --silent
+              zcat "$OUTPUT_DIR/tmp/$filename.vcf.gz" | sed 's/^19/chr19/' | bgzip > "$OUTPUT_DIR/tmp/$filename.tmp.vcf.gz"
+              mv "$OUTPUT_DIR/tmp/$filename.tmp.vcf.gz" "$OUTPUT_DIR/tmp/$filename.vcf.gz"
+              tabix -f "$OUTPUT_DIR/tmp/$filename.vcf.gz"
+             else
+              [ -f "$OUTPUT_DIR/tmp/$filename.vcf.gz" ] || plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$OUTPUT_DIR/tmp/$filename" --export vcf bgz  --out "$OUTPUT_DIR/tmp/$filename" --silent
+                tabix -f "$OUTPUT_DIR/tmp/$filename.vcf.gz"
+            fi
+
+            # Imputation
+           [ -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ] || run_minimac4_416 "$PONG2_root/extdata/$ASSEMBLY/"*.msav "$OUTPUT_DIR/tmp/$filename.vcf.gz" --region "$chr":"$start"-"$end" -o "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" -c 1000000 -t $THREADS -e "$OUTPUT_DIR/tmp/empirical.imputed_$filename.vcf.gz"  --format DS
+           mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz"
+           [ -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ] || plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --vcf "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" dosage=DS --import-dosage-certainty 0.8 --make-pgen --out "$OUTPUT_DIR/tmp/imputed.$filename" --silent
+           [ -f "$OUTPUT_DIR/tmp/imputed.$filename.bim" ] ||  plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --pfile "$OUTPUT_DIR/tmp/imputed.$filename" --make-bed --out "$OUTPUT_DIR/tmp/imputed.$filename" --silent
+            "kir_imputation" "$OUTPUT_DIR/tmp/imputed.$filename"
+           exit 0
+        fi
+
+        if [ "$FORCE" == "true" ]; then
+          "kir_imputation"  "$OUTPUT_DIR/tmp/$filename"
+        else
+           printf "%bMatch percentage: %.2f%%%b\nadd the flag '--force or -f' to continue anyway or the flag 'fill-missing' to impute the missing SNPs with minimac4'  " "$GREEN" "$(echo "$matching * 100" | bc -l)"
+           exit 1
+        fi
+    else
+       printf "%bMatch percentage: %.2f%%%b\n" "$GREEN" "$(echo "$matching * 100" | bc -l)" "${NC}"
+
+       "kir_imputation"  "$OUTPUT_DIR/tmp/$filename"
+    fi
+
+}
+
+function kir_imputation(){
+  local plink_file="$1"
+  awk '{print $1, $1":"$4, $3, $4, $5, $6}' "$plink_file.bim" > "$plink_file.mod.bim"
+  awk '{print $2}' "$plink_file.mod.bim" | sort | uniq -d > "$plink_file.snp_dup.txt"
+  mv "$plink_file.mod.bim" "$plink_file.bim"
+
+  plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$plink_file" --exclude "$plink_file.snp_dup.txt" --make-bed --out "$plink_file.nodup" --silent
+   cp "$plink_file.nodup."* "$OUTPUT_DIR"
+   $RSCRIPT --vanilla "$PREDICT_KIR" "$plink_file.nodup" "$OUTPUT_DIR" "$LOCUS" "$ASSEMBLY" "$FILTER" "$THREADS"
+   rm -r "$OUTPUT_DIR/tmp/"
+}
+
+run_minimac4_416() {
+    local paths=($(which -a minimac4) "$HOME/bin/minimac4" "/usr/local/bin/minimac4")
+
+    for path in "${paths[@]}"; do
+        if [ -n "$path" ] && [ -x "$path" ] && $path --version 2>/dev/null | grep -q "4.1.6"; then
+            echo "Running minimac4 from: $path"
+            $path "$@"
+            return $?
+        fi
+    done
+
+    echo "Error: minimac4 4.1.6 not found" >&2
+    return 1
+}
+
+function show_help() {
+    "$PONG2_root/scripts/help.sh"
+    #local help_script=$("$RSCRIPT" -e "cat(system.file('scripts', 'help.sh', package='PONG2'))")
+}
+
+# ==================
+# COMMAND PROCESSING
+# ==================
+# -----------------------------------
+# STEP 1: Find the command (non-flag argument)
+# -----------------------------------
+args=("$@")  # Save original arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --)  # End of options marker
+            shift
+            break
+            ;;
+        -*)  # Skip any flags during command detection
+            shift
+            ;;
+        *)
+            command="$1"
+            shift
+            break  # Command found, exit loop
+            ;;
+    esac
+done
+
+# -----------------------------------
+# STEP 2: Parse ALL arguments (including those before/after command)
+# -----------------------------------
+# Reset arguments for full parsing
+if (( ${#args[@]} > 0 )); then
+    set -- "${args[@]}"
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -i|--input)
+            INPUT_FILE="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        -l|--locus)
+            LOCUS="$2"
+            shift 2
+            ;;
+        -a|--assembly)
+            ASSEMBLY="$2"
+            shift 2
+            ;;
+        --filter)
+            FILTER="$2"
+            shift 2
+            ;;
+        -t|--threads)
+            THREADS="$2"
+            shift 2
+            ;;
+        -f|--force)
+            FORCE="true"
+            shift 1
+            ;;
+        --fill-missing)
+            FILL_MISSING="true"
+            shift 1
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --)  # End of options
+            shift
+            break
+            ;;
+        -*)  # Unknown flags
+            echo "Error: Unknown option $1" >&2
+            exit 1
+            ;;
+        *)   # Non-flag arguments (including our command)
+            if [[ "$1" != "$command" ]]; then
+                echo "Error: Unexpected argument $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+
+# -----------------------------------
+# Validate and execute
+# -----------------------------------
+case "$command" in
+    run)
+        echo "Running with input:$input output:$output threads:$threads"
+        ;;
+    impute)
+        [[ -z "${INPUT_FILE:-}" ]] && die "--input required"
+        [[ -z "${OUTPUT_DIR:-}" ]] && die "--output required"
+        [[ -z "${LOCUS:-}" ]] && die "--locus required"
+        [[ -z "${ASSEMBLY:-}" ]] && die "--assembly required (hg19/hg38)"
+
+        "imputation" "$INPUT_FILE" "$OUTPUT_DIR" "$LOCUS" "$ASSEMBLY" "$FILTER" "$THREADS"
+        ;;
+    "")
+        show_help
+        exit 0
+        ;;
+    *)
+        echo "Error: Unknown command '$command'" >&2
+        exit 1
+        ;;
+esac
+
+
+
+
+

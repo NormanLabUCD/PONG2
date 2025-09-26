@@ -1,27 +1,29 @@
-Package: PONG
+Package: PONG2
 Type: Package
-Title: Pulling Out NK cell Genomics (PONG) -- KIR3DL1/S1 Genotype
+Title: Pulling Out NK cell Genomics (PONG2) -- KIR Genotype
         Imputation with Attribute Bagging
 Version: 1.0.0
 Date: 2021-03-24
 Depends: R (>= 2.14.0)
 Suggests: parallel
-Author: Laura A Leaton, Genelle F Harrison, Paul Norman
+Author: Suraju A Sadeeq, Laura A Leaton, Paul Norman
 Maintainer: Genelle F. Harrison <GenelleFH@gmail.com>
-Description: PONG is a modification of HIBAG and was designed to impute KIR3DL1/S1
-	KIR3DL1/S1 alleles from chromosome 19 SNP data. PONG the R statistical programming language.
+Description: PONG2 is a modification of HIBAG and was designed to impute KIR3DL1/S1
+	KIR3DL1/S1 alleles from chromosome 19 SNP data. PONG2 the R statistical programming language.
 	We provide models built from the Global populations availible in the 1000 Genomes Project. 
-	PONG leverages the functions built in HIBAG using attribute bagging and an 
+	PONG2 leverages the functions built in HIBAG using attribute bagging and an 
 	ensemble classifier method with haplotype inference for SNPs and KIR3DL1/S1 types. Please use
 	with an R version < 4.0.
 License: GPL-3
-URL: https://github.com/n0rmski/PONG, http://github.com/zhengxwen/HIBAG
+URL: https://github.com/n0rmski/PONG2, http://github.com/zhengxwen/HIBAG
 Packaged: 2021-03-25 13:56:36 UTC; genelleharrison
 NeedsCompilation: yes
+LazyData: true
 Repository: CRAN
 Date/Publication: 2021-10-03 06:41:58
 Roxygen: list(markdown = TRUE)
 SystemRequirements: plink
 Config/configure: configure
 Config/cleanup: cleanup
+Configuration/cleanup: configure
 RoxygenNote: 7.3.2

@@ -33,7 +33,7 @@
 // Description    : HLA Genotype Imputation with Attribute Bagging
 // ===============================================================
 //
-// The program PONG is a modified version of HIBAG
+// The program PONG2 is a modified version of HIBAG
 // Genelle F Harrison (GenelleFH@gmail.com)
 //
 
@@ -63,16 +63,16 @@
 #  include <xmmintrin.h>  // SSE
 #  include <emmintrin.h>  // SSE2
 
-#  define PONG_SSE_VAR_ALIGN    __attribute__((aligned(16)))
+#  define PONG2_SSE_VAR_ALIGN    __attribute__((aligned(16)))
 
-#  define PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+#  define PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 
 # else
 
-#  define PONG_SSE_VAR_ALIGN 
+#  define PONG2_SSE_VAR_ALIGN
 
-#  ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
-#    undef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+#  ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
+#    undef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 #  endif
 
 #endif
@@ -82,27 +82,27 @@ namespace HLA_LIB
 {
 	using namespace std;
 
-	#ifdef PONG_SSE_OPTIMIZE_HAMMING_DISTANCE
+	#ifdef PONG2_SSE_OPTIMIZE_HAMMING_DISTANCE
 	typedef UINT16    UTYPE;
 	#else
 	typedef UINT8     UTYPE;
 	#endif
 
 
-	#define PONG_FLOAT_TYPE_ID    0
+	#define PONG2_FLOAT_TYPE_ID    0
 
-	#if (PONG_FLOAT_TYPE_ID == 0)
+	#if (PONG2_FLOAT_TYPE_ID == 0)
 	#  define TFLOAT           double
 	#  define FLOAT_LOG        log
 	#  define FLOAT_EXP        exp
 	#  define FLOAT_EPSILON    DBL_EPSILON
-	#elif (PONG_FLOAT_TYPE_ID == 1)
+	#elif (PONG2_FLOAT_TYPE_ID == 1)
 	#  define TFLOAT           float
 	#  define FLOAT_LOG        logf
 	#  define FLOAT_EXP        expf
 	#  define FLOAT_EPSILON    FLT_EPSILON
 	#else
-	#  error "Invalid PONG_FLOAT_TYPE_ID"
+	#  error "Invalid PONG2_FLOAT_TYPE_ID"
 	#endif
 
 
@@ -110,7 +110,7 @@ namespace HLA_LIB
 	// ************************************************************************* //
 
 	/// macro for checking error
-	#define PONG_CHECKING(x, msg)	{ if (x) throw ErrHLA(msg); }
+	#define PONG2_CHECKING(x, msg)	{ if (x) throw ErrHLA(msg); }
 
 
 
@@ -139,7 +139,7 @@ namespace HLA_LIB
 	{
 	public:
 		/// packed SNP alleles
-		UTYPE PackedHaplo[PONG_PACKED_UTYPE_MAXNUM_SNP];
+		UTYPE PackedHaplo[PONG2_PACKED_UTYPE_MAXNUM_SNP];
 		/// haplotype frequency
 		TFLOAT Frequency;
 		/// old haplotype frequency
@@ -163,7 +163,7 @@ namespace HLA_LIB
 	/// A list of haplotypes
 	class CHaplotypeList
 	{
-	public:	
+	public:
 		friend class CVariableSelection;
 
 		CHaplotypeList();
@@ -195,7 +195,7 @@ namespace HLA_LIB
 
 	protected:
 
-	#ifdef PONG_ALLOW_GPU_SUPPORT
+	#ifdef PONG2_ALLOW_GPU_SUPPORT
 		void InitGPUHostData(int *&_HLA_HapIdx, void *&_HapList);
 		inline void FreqGPUHostData(int *&_HLA_HapIdx, void *&_HapList);
 	#endif
@@ -211,7 +211,7 @@ namespace HLA_LIB
 		friend class CAlg_Prediction;
 
 		/// packed SNP genotypes
-		UTYPE PackedSNPs[PONG_PACKED_UTYPE_MAXNUM_SNP];
+		UTYPE PackedSNPs[PONG2_PACKED_UTYPE_MAXNUM_SNP];
 		/// the count in the bootstrapped data
 		int BootstrapCount;
 
@@ -295,7 +295,7 @@ namespace HLA_LIB
 		inline const int nSamp() const { return List.size(); }
 		/// return the total number of HLA alleles
 		inline const int Num_HLA_Allele() const { return Str_HLA_Allele.size(); }
-		
+
 		/// return how many alleles are the same
 		static int Compare(const THLAType &H1, const THLAType &H2);
 
@@ -380,7 +380,7 @@ namespace HLA_LIB
 
 		// call PrepareHaplotypes first, and then call PrepareNewSNP
 
-		/// 
+		///
 		void PrepareHaplotypes(const CHaplotypeList &CurHaplo,
 			const CGenotypeList &GenoList, const CHLATypeList &HLAList,
 			CHaplotypeList &NextHaplo);
@@ -411,7 +411,7 @@ namespace HLA_LIB
 			int BootstrapCount;           //< the count in the bootstrapped data
 			int SampIndex;                //< the sample index in the source data
 			vector<THaploPair> PairList;  //< a list of haplotype pairs
-			
+
 			/// print information
 			void Print(const int Length);
 		};
@@ -442,9 +442,9 @@ namespace HLA_LIB
 		/// average over all classifiers
 		void NormalizeSumPostProb();
 
-		/// 
+		///
 		TFLOAT &IndexPostProb(int H1, int H2);
-		/// 
+		///
 		TFLOAT &IndexSumPostProb(int H1, int H2);
 
 		/// predict based on SNP profiles and haplotype list,
@@ -511,7 +511,7 @@ namespace HLA_LIB
 		CSNPGenoMatrix *_SNPMat;
 		/// a list of HLA types
 		CHLATypeList *_HLAList;
-		
+
 		/// a list of genotypes
 		CGenotypeList _GenoList;
 		/// EM algorithm
@@ -527,7 +527,7 @@ namespace HLA_LIB
 		TFLOAT _InBagLogLik(CHaplotypeList &Haplo);
 
 
-	#ifdef PONG_ALLOW_GPU_SUPPORT
+	#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 		int InitGPUHostData_OutOfBag(TGPU_Genotype *&_GList);
 		int InitGPUHostData_InBag(TGPU_Genotype *&_GList);
@@ -540,11 +540,11 @@ namespace HLA_LIB
 
 
 	// ******************************************************************************* //
-	// ********                        PONG -- model                         ********
+	// ********                        PONG2 -- model                         ********
 
 	class CAttrBag_Model;
 
-	/// the individual classifier of PONG
+	/// the individual classifier of PONG2
 	class CAttrBag_Classifier
 	{
 	public:
@@ -590,7 +590,7 @@ namespace HLA_LIB
 	};
 
 
-	/// PONG -- the attribute bagging model
+	/// PONG2 -- the attribute bagging model
 	class CAttrBag_Model
 	{
 	public:
@@ -733,7 +733,7 @@ namespace HLA_LIB
 
 
 
-#ifdef PONG_ALLOW_GPU_SUPPORT
+#ifdef PONG2_ALLOW_GPU_SUPPORT
 
 	/// Initialize the GPU computing library
 	//  throw errors if it fails
