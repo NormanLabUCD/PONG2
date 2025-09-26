@@ -1,0 +1,28 @@
+PLINK v2.0.0-a.6.20LM AVX2 Intel (7 Jul 2025)
+Options in effect:
+  --bfile /home/suraju/projects/KIR_Methods/data/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes
+  --keep samples_100.txt
+  --make-bed
+  --out /home/suraju/projects/PONG2/tests/example/chr19
+
+Hostname: numetalhead
+Working directory: /home/suraju/projects/PONG2
+Start time: Fri Sep 26 20:46:18 2025
+
+Random number seed: 1758919578
+1547800 MiB RAM detected, ~693722 available; reserving 693658 MiB for main
+workspace.
+Using up to 96 threads (change this with --threads).
+2504 samples (0 females, 0 males, 2504 ambiguous; 2504 founders) loaded from
+/home/suraju/projects/KIR_Methods/data/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.fam.
+1833701 variants loaded from
+/home/suraju/projects/KIR_Methods/data/ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.bim.
+Note: No phenotype data present.
+--keep: 100 samples remaining.
+100 samples (0 females, 0 males, 100 ambiguous; 100 founders) remaining after
+main filters.
+Writing /home/suraju/projects/PONG2/tests/example/chr19.fam ... done.
+Writing /home/suraju/projects/PONG2/tests/example/chr19.bim ... done.
+Writing /home/suraju/projects/PONG2/tests/example/chr19.bed ... done.
+
+End time: Fri Sep 26 20:46:18 2025
