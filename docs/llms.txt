@@ -216,7 +216,7 @@ eagle \
   --chrom=19 \
   --numThreads=50 \
   --bpStart=55200000 \
-  --bpEnd=55300000
+  --bpEnd=55400000
 ```
 
 - Option A: Run PONG2 with local pre-imputation using minimac4 (built-in

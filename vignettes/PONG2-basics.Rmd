@@ -179,7 +179,7 @@ eagle \
   --chrom=19 \
   --numThreads=50 \
   --bpStart=55200000 \
-  --bpEnd=55300000
+  --bpEnd=55400000
 ```
 
 ### hg38 version
