@@ -191,7 +191,7 @@ eagle \
 
 ```bash
 #Use the `--fill-missing` flag when running `impute`:
-pong2 impute -i example/chr19.phased.vcf -o output -l KIR3DL1 -a hg19 --fill-missing -t 32
+pong2 impute -i chr19.phased.vcf -o output -l KIR3DL1 -a hg19 --fill-missing -t 32
 ```
 
 - Option B: External pre-imputation (recommended for highest accuracy)
