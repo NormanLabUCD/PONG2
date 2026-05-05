@@ -169,7 +169,7 @@ pong2 train [options]
 ### Examples
 #### 1.
 ```bash
-pong2 impute -i example/chr19 -o results/run1 -l KIR3DL1 -a hg19
+pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19
 ```
 #### 2. Pre-imputation (recommended for best accuracy)
 If the initial SNP matching rate in the KIR region is low (e.g., < 50%), PONG2 provides two main 
@@ -191,7 +191,7 @@ eagle \
 
 ```bash
 #Use the `--fill-missing` flag when running `impute`:
-pong2 impute -i example/chr19 -o results/run1 -l KIR3DL1 -a hg19 --fill-missing -t 32
+pong2 impute -i example/chr19.phased.vcf -o output -l KIR3DL1 -a hg19 --fill-missing -t 32
 ```
 
 - Option B: External pre-imputation (recommended for highest accuracy)
@@ -201,11 +201,11 @@ Recommended server: Michigan Imputation Server (https://imputationserver.sph.umi
 
 - You may chose to force PONG2 to continue even with low SNP matching rate using the flag `-f or --force`
 ```bash
-pong2 impute -i example/chr19 -o results/run1 -l KIR3DL1 -a hg19 -f
+pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19 -f
 ```
 #### 3.
 ```bash
-pong2 train -i example/chr19 -k example/kir_calls.csv -o models/v2 -l KIR -a hg19 -t 24
+pong2 train -i example/chr19 -k example/kir_calls.csv -o output -l KIR -a hg19 -t 24
 ```
 **NOTE:**
 ### KIR Region SNP Overlap between input data and 1KGP
