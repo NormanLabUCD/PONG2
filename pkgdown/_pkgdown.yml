@@ -2,9 +2,7 @@ url: https://normanlabucd.github.io/PONG2/
 
 template:
   bootstrap: 5
-  theme: default
-  params:
-    bootswatch: null
+  # Removed 'theme: default' and 'params' to fix the error
 
 home:
   title: PONG2
@@ -13,14 +11,13 @@ home:
   sidebar:
     structure: [links, license, community, citation, authors, dev]
 
-
 navbar:
   title: "PONG2"
   left:
     - text: "Home"
-      href: docs/index.html
+      href: index.html
     - text: "Reference"
-      href: docs/index.html
+      href: index.html
     - text: "Articles"
       menu:
         - text: "Basics"
@@ -32,4 +29,4 @@ navbar:
   right:
     - icon: fa-github fa-lg
       href: https://github.com/NormanLabUCD/PONG2
-      aria-label: "PONG2 source code on GitHub"   # ← This fixes the warning
+      aria-label: "PONG2 source code on GitHub"

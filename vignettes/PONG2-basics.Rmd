@@ -107,7 +107,7 @@ pong2 impute \
 ### Imputation with missing SNP fallback
 ```bash
 pong2 impute \
-  -i data/low_coverage \
+  -i data/vcf_file \
   -o results/imputed \
   -l KIR \
   -a hg38 \
@@ -217,6 +217,6 @@ pong2 impute -i imputed_ready -o results/final -l KIR -a hg38 --filter 0.005
 
 ## Next steps
 
-- See vignette "PONG2-imputation" for detailed imputation workflow
-- See vignette "PONG2-training" for custom model training
-- Report issues: GitHub Issues
+- See vignette ["PONG2-imputation"](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html) for detailed imputation workflow
+- See vignette ["PONG2-training"](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html) for custom model training
+- Report issues: [Open a GitHub issue](https://github.com/NormanLabUCD/PONG2/issues/new)

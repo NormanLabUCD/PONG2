@@ -86,7 +86,7 @@ eagle \
 ## Run PONG2 with local pre-imputation using minimac4 (built-in – quick & automated) using flag the `--fill-missing`
 ```bash
 pong2 impute \
-  -i phased_chr19 \
+  -i chr19.phased.vcf \
   -o results/local_impute \
   -l KIR \
   -a hg38 \
@@ -139,7 +139,7 @@ imputation_log.txt — detailed log
 tmp/ — temporary files (can be deleted)
 ```
 
-For model training, see vignette ["PONG2-training"].
+For model training, see vignette ["PONG2-training"](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html).
 Questions or issues? [Open a GitHub issue](https://github.com/NormanLabUCD/PONG2/issues/new)
 Happy KIR imputation! 🧬
 

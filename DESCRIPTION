@@ -34,4 +34,4 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 SystemRequirements: plink2
 Config/pkgdown:
-    url: https://NormanLabUCD.github.io/PONG2/
+    url: URL: https://github.io

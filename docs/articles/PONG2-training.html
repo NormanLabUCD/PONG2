@@ -10,7 +10,7 @@
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="PONG2 Basics: Installation, Quick Start, and Core Usage">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="PONG2 Training: Building Custom KIR Prediction Models">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -29,11 +29,12 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="../">Home</a></li>
-<li class="nav-item"><a class="nav-link" href="../">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="../index.html">Home</a></li>
+<li class="nav-item"><a class="nav-link" href="../index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="../articles/PONG2-basics.html">Basics</a></li>
     <li><a class="dropdown-item" href="../articles/PONG2-imputation.html">Imputation</a></li>
     <li><a class="dropdown-item" href="../articles/PONG2-training.html">Training</a></li>
   </ul>
@@ -56,14 +57,14 @@
 
       <h1>PONG2 Training: Building Custom KIR Prediction Models</h1>
                         <h4 data-toc-skip class="author">Norman Lab</h4>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/NormanLabUCD/PONG2/blob/HEAD/vignettes/PONG2-training.Rmd" class="external-link"><code>vignettes/PONG2-training.Rmd</code></a></small>
       <div class="d-none name"><code>PONG2-training.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
@@ -114,25 +115,24 @@ optional:</p>
 <tbody>
 <tr class="odd">
 <td align="left"><code>SAMPLE001</code></td>
-<td align="left"><code>*00101</code></td>
-<td align="left"><code>*00302</code></td>
-<td align="left"><code>*00101</code>
-</td>
-<td align="left"><code>*00201</code></td>
+<td align="left">*00101</td>
+<td align="left">*00302</td>
+<td align="left">*00101</td>
+<td align="left">*00201</td>
 </tr>
 <tr class="even">
 <td align="left"><code>SAMPLE002</code></td>
-<td align="left"><code>*00104</code></td>
-<td align="left"><code>*0000</code></td>
-<td align="left"><code>*00401</code></td>
-<td align="left"><code>*00501</code></td>
+<td align="left">*00104</td>
+<td align="left">*0000</td>
+<td align="left">*00401</td>
+<td align="left">*00501</td>
 </tr>
 <tr class="odd">
 <td align="left"><code>SAMPLE003</code></td>
-<td align="left"><code>*009</code></td>
-<td align="left"><code>*00601</code></td>
-<td align="left"><code>*00302</code></td>
-<td align="left"><code>*00101</code></td>
+<td align="left">*009</td>
+<td align="left">*00601</td>
+<td align="left">*00302</td>
+<td align="left">*00101</td>
 </tr>
 </tbody>
 </table>
@@ -189,24 +189,10 @@ panel</li>
 <li>Memory issues → Reduce threads or use a machine with more RAM</li>
 <li>Slow training → Use more –threads or smaller reference dataset</li>
 </ul>
-
-
-<div class="section level2">
-</h2>
-<ul>
-<li><a class="external-link" href="PONG2-imputation.html">See vignette PONG2-imputation for detailed imputation
-workflow</a></li>
-<li><a class="external-link" href="PONG2-training.html">See vignette PONG2-training for custom model training</a></li>
-<li><a href="https://github.com/NormanLabUCD/PONG2/issues/new" class="external-link">Report issues: GitHub Issues</a></li>
-</ul>
 </div>
-  </main>
-  <aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2></nav>
-  </aside>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
-<p>For more details on model structure and prediction logic, see the
-package reference or source code. Questions or issues? Open a GitHub
-issue. Happy model training! 🧬</p>
 
 
 
@@ -220,6 +206,9 @@ issue. Happy model training! 🧬</p>
 
     </footer>
 </div>
+
+
+
 
 
   </body>
