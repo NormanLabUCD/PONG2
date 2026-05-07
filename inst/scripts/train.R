@@ -24,7 +24,7 @@ if(nclassifier == "Null"){
 }
 
 if(kirSplit == "Null"){
-  kirSplit <- 0.8
+  kirSplit <- 0.7
 } else {
   kirSplit <- as.numeric(kirSplit)
 }
@@ -174,7 +174,9 @@ model <- kirParallelAttrBagging(cl=cluster, kirtab$training, train.geno, nclassi
 #save results
 mobj <- hlaModelToObj(model)
 save(mobj, file=paste0(out, "/", locus,"_model.RData"))
-save(test.geno, file=paste0(out, "/", locus, "_test.RData"))
-save(kirtab, file=paste0(out, "/", locus, "_split.RData"))
+if(kirSplit < 1){
+  save(test.geno, file=paste0(out, "/", locus, "_test.RData"))
+  save(kirtab, file=paste0(out, "/", locus, "_split.RData"))
+}
 
 stopCluster(cluster)
