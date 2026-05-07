@@ -96,7 +96,7 @@ if(assembly == "hg19" && locusregion == "Null"){
   region = as.numeric(unlist(regmatches(locusregion, gregexpr("\\d+", locusregion)))[-1])
 }
 
-frequent_filtered <- function(kir_data, locus, filtered_freq){
+frequency_filtered <- function(kir_data, locus, filtered_freq){
   allele1=paste0(locus, "_h1")
   allele2=paste0(locus, "_h2")
   kir_data = kir_data[, c("Sample", allele1, allele2)]
@@ -132,7 +132,7 @@ allele1 = paste0(locus, "_h1")
 allele2 = paste0(locus, "_h2")
 
 KIR_df <- read_csv(kirfile, show_col_types = FALSE)
-type_filtered <- frequent_filtered(KIR_df, locus, filtered_freq=kirmaf)
+type_filtered <- frequency_filtered(KIR_df, locus, filtered_freq=kirmaf)
 
 KIR_type <- hlaAllele(
   type_filtered$Sample,
