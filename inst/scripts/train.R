@@ -49,23 +49,6 @@ if(threads == "Null"){
 }
 cluster <- makeCluster(num_threads)
 
-# Print Summary
-cat("\n--- Parameter Settings ---\n")
-cat("Chromosome 19: ", chr19, "\n")
-cat("KIR File:      ", kirfile, "\n")
-cat("Locus:         ", locus, "\n")
-cat("Assembly:      ", assembly, "\n")
-cat("Output:        ", out, "\n")
-cat("N Classifier:  ", nclassifier, "\n")
-cat("Threads:       ", num_threads, "\n")
-cat("KIR Split:     ", kirSplit, "\n")
-cat("KIR MAF:       ", kirmaf, "\n")
-cat("Genotype MAC:  ", mac, "\n")
-cat("--------------------------\n\n")
-
-
-#pong2 train --bfile ~/projects/PONG2/tests/example/chr19 --kfile ~/projects/PONG2/tests/example/kir_file.csv --output ~/projects/ --locus KIR2DL1 --assembly hg19
-
 
 # Best performing positions (Default)
 if(assembly == "hg19" && locusregion == "Null"){
@@ -93,8 +76,13 @@ if(assembly == "hg19" && locusregion == "Null"){
   ), `KIR3DP1` = c(54786362,54790417))
   region = kir_position[[locus]]
 }else{
-  region = as.numeric(unlist(regmatches(locusregion, gregexpr("\\d+", locusregion)))[-1])
+  region = as.numeric(unlist(strsplit(locusregion, "-")))
+
 }
+
+
+#pong2 train --bfile ~/projects/PONG2/tests/example/chr19 --kfile ~/projects/PONG2/tests/example/kir_file.csv --output ~/projects/ --locus KIR2DL1 --assembly hg19
+
 
 frequency_filter <- function(kir_data, locus, filtered_freq){
   allele1=paste0(locus, "_h1")
@@ -160,18 +148,28 @@ snpId <- kir_geno$snp.id
 train.geno <- hlaGenoSubset(geno19, snp.sel = match(snpId, geno19$snp.id), samp.sel = na.omit(match(kirtab$training$value$sample.id, geno19$sample.id)))
 test.geno <- hlaGenoSubset(geno19, samp.sel=na.omit(match(kirtab$validation$value$sample.id, geno19$sample.id)))
 
-cat("\n--- Training Settings ---\n")
-#cat("Training samples:  ", length(train_samples), "\n")
-cat(paste0("SNPs in", locus," Region:    "), length(kir_geno_pos), "\n")
-#cat("SNP IDs:           ", length(snpId), "\n")
+
+# Print Summary
+cat("\n--- Parameter Settings ---\n")
+cat("Chromosome 19: ", chr19, "\n")
+cat("KIR File:      ", kirfile, "\n")
+cat("Locus:         ", locus, "\n")
+cat("Assembly:      ", assembly, "\n")
+cat("Output:        ", out, "\n")
+cat("N Classifier:  ", nclassifier, "\n")
+cat("Threads:       ", num_threads, "\n")
+cat("KIR Split:     ", kirSplit, "\n")
+cat("KIR MAF:       ", kirmaf, "\n")
+cat("Genotype MAC:  ", mac, "\n")
+cat(paste(locus, "Region:"), paste0(min(region), "-", max(region)), "\n")
+cat(paste(locus, "SNPs:"), length(kir_geno_pos), "\n")
 cat("Train Samples:", length(train.geno$sample.id), "\n")
-cat("Test Samples:   ", length(test.geno$sample.id), "\n")
+cat("Test Samples:", length(test.geno$sample.id), "\n")
 cat("--------------------------\n\n")
 
 # train a KIR model
 set.seed(100)
 model <- kirParallelAttrBagging(cl=cluster, kirtab$training, train.geno, nclassifier=nclassifier)
-
 
 #save results
 mobj <- hlaModelToObj(model)
