@@ -40,7 +40,12 @@ BIN_DIR="$HOME/bin"
 PONG2_root=$(Rscript -e 'cat(system.file(package="PONG2"))' 2>/dev/null)
 
 # Default variables
-THREADS=20
+NCLASSIFIER="Null"
+LOCUS_REGION="Null"
+KIRSPLIT="Null"
+KIRMAF="Null"
+MAC="Null"
+THREADS=4
 FILTER=0.005
 FORCE="false"
 FILL_MISSING="false"
@@ -64,7 +69,6 @@ pos() {
 #dev_mode=/home/suraju/projects/PONG22/inst/scripts
 command=""
 
-
 # ==================
 # CORE FUNCTIONS
 # ==================
@@ -80,9 +84,6 @@ function load_package() {
 }
 
 function train_model() {
-  #echo $(load_package)
-  #Rscript -e 'PONG2::kirPredict'
-  #echo -e "${GREEN}Starting imputation...${NC}"
 
   #. Check Plink2 availability
   "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
@@ -92,16 +93,38 @@ function train_model() {
   #read start end chr <<< "${pos["$ASSEMBLY"]}"
   read start end chr <<< "$(pos "$ASSEMBLY")"
 
-  awk -F',' '{print $1, $1}' $KIR_FILE > $OUTPUT_DIR/tmp/kir_sample.txt
-  plink2 --bfile $BIM_FILE --keep $OUTPUT_DIR/tmp/kir_sample.txt --make-bed --out $OUTPUT_DIR/tmp/temp
-  #./plink --bfile $out/temp  --list-duplicate-vars --out $out/plink
-  awk '{print $2}' $OUTPUT_DIR/tmp/temp.bim | sort | uniq -d > $OUTPUT_DIR/tmp/snp_duplicate.txt
-  plink2 --bfile $OUTPUT_DIR/tmp/temp --exclude $OUTPUT_DIR/tmp/snp_duplicate.txt --make-bed --out $OUTPUT_DIR/tmp/chr19
+  # awk -F',' '{print $1, $1}' $KIR_FILE > $OUTPUT_DIR/tmp/kir_sample.txt
+  # plink2 --bfile $BIM_FILE --keep $OUTPUT_DIR/tmp/kir_sample.txt --silent --make-bed --out $OUTPUT_DIR/tmp/temp
+  # #./plink --bfile $out/temp  --list-duplicate-vars --out $out/plink
+  # awk '{print $2}' $OUTPUT_DIR/tmp/temp.bim | sort | uniq -d > $OUTPUT_DIR/tmp/snp_duplicate.txt
+  # plink2 --bfile $OUTPUT_DIR/tmp/temp --exclude $OUTPUT_DIR/tmp/snp_duplicate.txt --silent --make-bed --out $OUTPUT_DIR/tmp/chr19
 
+  # Step 1: Create sample keep file (skip header, remove quotes)
+  awk -F',' 'NR>1 {gsub(/"/, "", $1); print $1, $1}' \
+    $KIR_FILE > $OUTPUT_DIR/tmp/kir_sample.txt
 
-  #Run PONG with preprocess script
-  #echo $TRAIN_KIR_MODEL $OUTPUT_DIR/tmp/chr19 $KIR_FILE $LOCUS $ASSEMBLY $OUTPUT_DIR ;
-  Rscript $TRAIN_KIR_MODEL $OUTPUT_DIR/tmp/chr19 $KIR_FILE $LOCUS $ASSEMBLY $OUTPUT_DIR ;
+  # Step 2: Subset plink file
+  plink2 \
+    --bfile $BIM_FILE \
+    --keep $OUTPUT_DIR/tmp/kir_sample.txt \
+    --silent \
+    --make-bed \
+    --out $OUTPUT_DIR/tmp/temp
+
+  # Step 3: Remove duplicate SNPs
+  awk '{print $2}' $OUTPUT_DIR/tmp/temp.bim | \
+    sort | uniq -d > $OUTPUT_DIR/tmp/snp_duplicate.txt
+
+  # Step 4: Exclude duplicates
+  plink2 \
+    --bfile $OUTPUT_DIR/tmp/temp \
+    --exclude $OUTPUT_DIR/tmp/snp_duplicate.txt \
+    --silent \
+    --make-bed \
+    --out $OUTPUT_DIR/tmp/chr19
+
+  #Run PONG with preprocessed data
+  Rscript $TRAIN_KIR_MODEL $OUTPUT_DIR/tmp/chr19 $KIR_FILE $LOCUS $ASSEMBLY $OUTPUT_DIR $NCLASSIFIER $THREADS $KIRSPLIT $KIRMAF $MAC $LOCUS_REGION;
 
 }
 
@@ -281,6 +304,26 @@ while [[ $# -gt 0 ]]; do
             FILTER="$2"
             shift 2
             ;;
+        --split)
+            KIRSPLIT="$2"
+            shift 2
+            ;;
+         -r|--region)
+            LOCUS_REGION="$2"
+            shift 2
+            ;;
+        --nclassifier)
+            NCLASSIFIER="$2"
+            shift 2
+            ;;
+        --kirmaf)
+            KIRMAF="$2"
+            shift 2
+            ;;
+        --mac)
+            MAC="$2"
+            shift 2
+            ;;
         -t|--threads)
             THREADS="$2"
             shift 2
@@ -303,7 +346,6 @@ while [[ $# -gt 0 ]]; do
             show_help "$topic"
             exit 0
            ;;
-
         --)  # End of options
             shift
             break

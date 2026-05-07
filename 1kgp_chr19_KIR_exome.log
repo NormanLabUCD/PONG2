@@ -1,0 +1,20 @@
+PLINK v2.0.0-a.6.20LM AVX2 Intel (7 Jul 2025)
+Options in effect:
+  --bfile 1kgp_chr19_exome
+  --chr 19
+  --from-bp 55100000
+  --make-bed
+  --out 1kgp_chr19_KIR_exome
+  --to-bp 55500000
+
+Hostname: numetalhead
+Working directory: /home/suraju/projects/PONG2
+Start time: Tue May  5 23:47:53 2026
+
+Random number seed: 1778024873
+1547800 MiB RAM detected, ~345916 available; reserving 345852 MiB for main
+workspace.
+Using up to 96 threads (change this with --threads).
+Error: Failed to open 1kgp_chr19_exome.bed : No such file or directory.
+
+End time: Tue May  5 23:47:53 2026
