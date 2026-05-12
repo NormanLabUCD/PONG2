@@ -3,17 +3,16 @@
 [![R](https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&logoColor=white)](https://www.r-project.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![GitHub release](https://img.shields.io/github/v/release/NormanLabUCD/PONG2)](https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0)
-<!-- Add real CI badge if you set up GitHub Actions later -->
-<!-- [![R-CMD-check](https://github.com/NormanLabUCD/PONG2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/NormanLabUCD/PONG2/actions) -->
 
-**PONG2** is an R package with C++ acceleration (via Rcpp) for **high-accuracy imputation** and **training** of Killer-cell Immunoglobulin-like Receptor (**KIR**) genotypes from SNP array in the KIR locus (chromosome 19).
+**PONG2** is an R package with C++ acceleration (via Rcpp) for **high-accuracy imputation** and **training** of Killer-cell Immunoglobulin-like Receptor (**KIR**) genotypes from SNP array data in the KIR locus (chromosome 19q13.4).
 
-It is optimized for population genetics, immunogenetics, and large-scale biobank studies requiring reliable KIR allele calls.
+It is optimized for population genetics, immunogenetics, and large-scale biobank studies requiring reliable KIR allele calls across diverse ancestries.
 
 **Main CLI commands:**
-
-- `impute` – predict KIR alleles from target PLINK files  
+- `impute` – predict KIR alleles from target PLINK files
 - `train` – build a new prediction model from reference genotypes + known KIR calls
+
+---
 
 ## Table of Contents
 
@@ -21,9 +20,6 @@ It is optimized for population genetics, immunogenetics, and large-scale biobank
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
-  - [From GitHub (recommended for latest version)](#from-github-recommended-for-latest-version)
-  - [From source tarball](#from-source-tarball)
-  - [From source directory (developer mode)](#from-source-directory-developer-mode)
 - [CLI Setup & Quick Start](#cli-setup--quick-start)
 - [Usage](#usage)
   - [impute command](#impute-command)
@@ -32,233 +28,327 @@ It is optimized for population genetics, immunogenetics, and large-scale biobank
 - [Input & Output Formats](#input--output-formats)
 - [Dependencies & External Tools](#dependencies--external-tools)
 - [Troubleshooting](#troubleshooting)
-- [Development & Contributing](#development--contributing)
 - [License](#license)
 - [Citation](#citation)
 - [Contact & Support](#contact--support)
+
+---
 
 ## Overview
 
 PONG2 enables scalable and accurate KIR genotyping by combining:
 
-- region-specific PLINK2 preprocessing  
-- optional local minimac4 imputation for missing variants  
-- supervised allele prediction models tailored to the polymorphic KIR region
+- Region-specific PLINK2 preprocessing
+- Optional local minimac4 pre-imputation for missing variants
+- Supervised allele prediction models tailored to the highly polymorphic KIR region
 
-It supports both hg19 and hg38 assemblies and is particularly useful for studying immune response variation, HLA–KIR interactions, and disease association in diverse populations.
+It supports both **hg19** and **hg38** assemblies and is particularly useful for studying immune response variation, HLA–KIR interactions, and disease associations in diverse populations.
+
+---
 
 ## Features
-- Automatic handling of hg19 / hg38 coordinate differences  
-- Configurable SNP missingness threshold  
-- Built-in local imputation fallback (`--fill-missing`)  
-- Support for external pre-imputation (e.g. Michigan Imputation Server)  
-- Multi-threading via `--threads`  
-- Force-run mode and missing SNP imputation strategies  
+
+- Multi-ancestry pre-trained models (EUR, AMR, AFR, EAS, SAS)
+- Automatic handling of hg19 / hg38 coordinate differences
+- Configurable SNP missingness threshold
+- Built-in local imputation fallback (`--fill-missing`) using minimac4
+- Support for external pre-imputation (e.g. Michigan Imputation Server)
+- Multi-threading via `--threads`
+- Automatic chunked prediction for large biobank datasets (>2,000 samples)
+- Force-run mode for low SNP match scenarios
 - Clean separation of preprocessing and prediction steps
+
+---
 
 ## Requirements
 
-**R version**  
-≥ 4.0
+**R version:** ≥ 4.0
 
 **Required R packages** (loaded at runtime):
-- readr
-- tidyverse
-- parallel
+- `readr`
+- `tidyverse`
+- `parallel`
 
 **System tools** (must be in PATH):
 
-- PLINK 2.0 (required)
-- minimac4 ≥ 4.1.6 (required only when using `--fill-missing`)
-- bgzip & tabix (HTSlib – usually bundled with minimac4)
+| Tool | Version | Required |
+|------|---------|----------|
+| PLINK2 | ≥ 2.0 | Always |
+| minimac4 | ≥ 4.1.6 | Only with `--fill-missing` |
+| bgzip & tabix | HTSlib | Only with `--fill-missing` |
+| Eagle2 | ≥ 2.4 | Only for pre-phasing before `--fill-missing` |
+
+---
 
 ## Installation
 
-### From GitHub (recommended for latest version)
-
-Install the development or stable version directly from the repository:
+### From GitHub (recommended)
 
 ```r
 # Install remotes if needed
-if (!require("remotes", quietly = TRUE)) {
-  install.packages("remotes")
-}
+if (!require("remotes", quietly = TRUE)) install.packages("remotes")
 
 # Install PONG2 from GitHub
-remotes::install_github("https://github.com/NormanLabUCD/PONG2")
+remotes::install_github("NormanLabUCD/PONG2")
 ```
 
-### Standard install
-Download the source tarball from the release: [PONG2_1.0.0.tar.gz](https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/PONG2_1.0.0.tar.gz)
+### From source tarball
+
+Download [PONG2_1.0.0.tar.gz](https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/PONG2_1.0.0.tar.gz) then:
+
 ```bash
+# Standard install
 R CMD INSTALL PONG2_1.0.0.tar.gz
+
+# Custom library path
+R CMD INSTALL --library=/your/custom/path PONG2_1.0.0.tar.gz
 ```
 
-### Custom library path
+### CLI Setup
+
+After installation, make the `pong2` script executable and add it to your PATH:
+
 ```bash
-R CMD INSTALL --library="installation path" PONG2_1.0.0.tar.gz
+# Locate the pong2 script
+PONG2_BIN=$(Rscript -e "cat(system.file('scripts', 'pong2', package='PONG2'))")
+
+# Make executable
+chmod +x "$PONG2_BIN"
+
+# Add to PATH (add this to your ~/.bashrc or ~/.bash_profile)
+export PATH="$(dirname $PONG2_BIN):$PATH"
+
+# Verify installation
+pong2 version
 ```
 
-### USAGE
+---
+
+## Usage
+
 ```bash
 pong2 <command> [options]
 ```
-### Basic imputation
+
+### Help
+
 ```bash
-pong2 impute -i bfile -o output -l KIR -a hg19
+pong2 --help              # General overview + list of commands
+pong2 --help impute       # Detailed help for imputation
+pong2 --help train        # Detailed help for training
+pong2 version             # Show version number
 ```
 
-### Imputation with local missing SNP fill-in
-```bash
-pong2 impute -i bfile -o output -l KIR -a hg19 --fill-missing -t 20
-```
-
-### Train a new model
-```bash
-pong2 train -i bfile -k kfile -o output -l KIR -a hg19 -t 20
-```
-### Specific detailed help
-```bash
-pong2 --help                # General overview + list of commands
-pong2 --help impute         # Detailed help for imputation
-pong2 --help train          # Detailed help for training
-pong2 version               # Show version number
-```
+---
 
 ### impute command
+
+Predict KIR alleles from a target PLINK dataset.
+
 ```bash
 pong2 impute [options]
 ```
-| Flag | Description | Example Value |
-| :--- | :--- | :--- |
-| `-i, --input` | PLINK bed/bim/fam prefix (should cover KIR locus on chr19) | `data/my_genotypes_chr19` |
-| `-o, --output` | Output directory (will be created if it doesn't exist) | `results/imputation` |
-| `-l, --locus` | Target locus (currently only KIR is supported) | `KIR` |
-| `-a, --assembly` | Genome build used in the data | `hg19` or `hg38` |
 
-### Optional flags
+#### Required flags
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `-i, --bfile` | PLINK bed/bim/fam prefix (chr19) | `data/chr19` |
+| `-o, --output` | Output directory | `results/imputation` |
+| `-l, --locus` | KIR locus to impute | `KIR3DL1` |
+| `-a, --assembly` | Genome build | `hg19` or `hg38` |
+
+#### Optional flags
 
 | Flag | Default | Description |
-| :--- | :--- | :--- |
-| `--filter` | `0.01` or `0.005` | KIR genotype quality filter threshold used in model training |
-| `-t, --threads` | `20` | Number of CPU threads |
-| `-f, --force` | `false` | Proceed even if SNP matching rate is low |
-| `--fill-missing` | `false` | Impute missing SNPs locally with minimac4 |
-| `-m, --model` | `false` | imputation with your own built model |
+|------|---------|-------------|
+| `--filter` | `0.005` | Allele frequency filter threshold (`0.005` or `0.01`) |
+| `-t, --threads` | `4` | Number of CPU threads |
+| `-f, --force` | `false` | Proceed even if SNP matching rate is low (<50%) |
+| `--fill-missing` | `false` | Impute missing SNPs locally with minimac4 (requires `--vcf`) |
+| `--vcf` | — | Pre-phased VCF file required when using `--fill-missing` |
 
+#### Examples
+
+```bash
+# Basic imputation
+pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19
+```
+
+---
 
 ### train command
+
+Build a new KIR prediction model from reference genotypes and known KIR calls.
+
 ```bash
 pong2 train [options]
 ```
-| Flag | Description |
-| :--- | :--- |
-| `-i, --bfile` | Reference PLINK bed/bim/fam prefix |
-| `-k, --kfile` | CSV with sample IDs and KIR calls (e.g., sample KIR3DL1_h1 KIR3DL1_h2) |
-| `-o, --output` | Directory to save trained model |
-| `-l, --locus` | KIR |
-| `-a, --assembly` | hg19 or hg38 |
 
-### Optional flags
+#### Required flags
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `-i, --bfile` | Reference PLINK bed/bim/fam prefix | `data/chr19` |
+| `-k, --kfile` | CSV with sample IDs and KIR allele calls | `data/kir_calls.csv` |
+| `-o, --output` | Directory to save trained model | `models/KIR3DL1` |
+| `-l, --locus` | KIR locus to train | `KIR3DL1` |
+| `-a, --assembly` | Genome build | `hg19` or `hg38` |
+
+#### Optional flags
+
 | Flag | Default | Description |
-| :--- | :--- | :--- |
-| `-t, --threads` | `20` | Number of CPU threads |
-| `--filter` | `0.01` | KIR genotype quality filter threshold |
-| `p, or --position` | *Optimized KIR region* | Optional KIR region |
+|------|---------|-------------|
+| `-t, --threads` | `4` | Number of CPU threads |
+| `--nclassifier` | `100` | Number of ensemble classifiers |
+| `--split` | `0.7` | Train/validation split proportion |
+| `--kirmaf` | `0.00` | Minimum KIR allele frequency filter |
+| `--mac` | `3` | Minimum allele count for SNPs |
+| `-r, --region` | Optimized default | Custom KIR region (e.g. `55281035-55295784`) |
 
-### Examples
-#### 1.
-```bash
-pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19
+#### KIR file format
+
+The KIR file (`--kfile`) must be a CSV with the following structure:
+
 ```
-#### 2. Pre-imputation (recommended for best accuracy)
-If the initial SNP matching rate in the KIR region is low (e.g., < 50%), PONG2 provides two main 
-strategies to improve accuracy by imputing missing or low-quality SNPs **before** running the core PONG2 prediction step.
+Sample,KIR3DL1_h1,KIR3DL1_h2
+HG00096,KIR3DL1*001,KIR3DL1*002
+HG00097,KIR3DL1*005,KIR3DL1*015
+```
 
-#### Note: Pre-phasing the KIR region is required for both local and external pre-imputation (https://alkesgroup.broadinstitute.org/Eagle/)
+#### Example
 
 ```bash
+pong2 train -i example/chr19 -k -i example/kir_call.csv
+```
+
+---
+
+## Improving Imputation Accuracy
+
+> **NOTE:**
+> ### KIR Region SNP Overlap between input data and 1KGP
+> Overlap rate is computed between your input data and the 1000 Genomes Project (1KGP)
+> reference panel in the KIR region (chr19).
+>
+> | Overlap Rate | Status | Action |
+> |-------------|--------|--------|
+> | ≥ 50% | ✅ Pass | Proceed with PONG2 directly |
+> | < 50% | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+
+If your SNP matching rate is below 50%, PONG2 provides two strategies:
+
+### Option A: Local pre-imputation with minimac4 (built-in)
+
+Pre-phase your data with Eagle2, then run PONG2 with `--fill-missing`:
+
+```bash
+# Step 1: Pre-phase with Eagle2
 eagle \
   --bfile=chr19 \
   --geneticMapFile=genetic_map_hg19.txt.gz \
   --outPrefix=chr19.phased \
   --chrom=19 \
-  --numThreads=50 \
-  --bpStart=55200000 \
+  --numThreads=20 \
+  --bpStart=55000000 \
   --bpEnd=55400000
+
+# Step 2: Run PONG2 with fill-missing
+pong2 impute \
+  --vcf chr19.phased.vcf.gz \
+  -o output \
+  -l KIR3DL1 \
+  -a hg19 \
+  --fill-missing \
+  -t 20
 ```
-- Option A: Run PONG2 with local pre-imputation using minimac4 (built-in – quick & automated) using flag the `--fill-missing`
 
-```bash
-#Use the `--fill-missing` flag when running `impute`:
-pong2 impute -i chr19.phased.vcf -o output -l KIR3DL1 -a hg19 --fill-missing -t 32
-```
+> ⚠️ **Note:** A pre-phased VCF (`--vcf`) is required with `--fill-missing`.
 
-- Option B: External pre-imputation (recommended for highest accuracy)
+### Option B: External pre-imputation (recommended for highest accuracy)
 
-pre-impute your chr19 data using a public imputation server before running PONG2.
-Recommended server: Michigan Imputation Server (https://imputationserver.sph.umich.edu/)
+Pre-impute your chr19 data using a public imputation server before running PONG2:
 
-- You may chose to force PONG2 to continue even with low SNP matching rate using the flag `-f or --force`
-```bash
-pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19 -f
-```
-#### 3.
-```bash
-pong2 train -i example/chr19 -k example/kir_calls.csv -o output -l KIR -a hg19 -t 24
-```
-**NOTE:**
-### KIR Region SNP Overlap between input data and 1KGP
+- [Michigan Imputation Server](https://imputationserver.sph.umich.edu/)
+- [TOPMed Imputation Server](https://imputation.biodatacatalyst.nhlbi.nih.gov/) (recommended for diverse populations)
 
-Overlap rate is computed between your input data and the 1000 Genomes Project (1KGP) 
-reference panel in the KIR region.
+---
 
-| Overlap Rate | Status | Action |
-|-------------|--------|--------|
-| ≥ 50% | ✅ Pass | Proceed with PONG2 |
-| < 50% | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+## Input & Output Formats
 
-**Detailed tutorials & examples** are available in the vignettes:  
-[PONG2 Basics](https://normanlabucd.github.io/PONG2/) • [Imputation Workflow](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html) • [Training Models](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html)
+### Input
 
+| File | Format | Description |
+|------|--------|-------------|
+| PLINK bfile | `.bed/.bim/.fam` | Genotype data for chr19 |
+| KIR file | `.csv` | Sample IDs + phased KIR allele calls (train only) |
+| VCF | `.vcf.gz` (bgzipped + tabixed) | Pre-phased VCF (required with `--fill-missing`) |
 
-### License
+### Output
 
+| File | Description |
+|------|-------------|
+| `KIR/<locus>.csv` | Predicted KIR alleles per sample |
+| `KIR/<locus>.RData` | Full prediction object (alleles + probabilities) |
+| `<locus>_model.RData` | Trained model object (train only) |
+| `<locus>_test.RData` | Test genotypes (train only, when `--split < 1`) |
 
+---
+
+## Dependencies & External Tools
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| PLINK2 | Genotype preprocessing | [plink2](https://www.cog-genomics.org/plink/2.0/) |
+| Eagle2 | Pre-phasing for imputation | [Eagle](https://alkesgroup.broadinstitute.org/Eagle/) |
+| minimac4 | Local SNP imputation | [minimac4](https://github.com/statgen/Minimac4) |
+| bgzip/tabix | VCF compression & indexing | [HTSlib](https://www.htslib.org/) |
+
+---
+
+## Troubleshooting
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| `--vcf is required with --fill-missing` | No VCF provided | Supply pre-phased VCF with `--vcf` |
+| `High missing rate` | SNP overlap < 50% | Run Eagle2 + minimac4, or use `--force` |
+| `No model found for locus` | Unsupported locus or wrong filter | Check locus name and `--filter` value |
+| `incorrect number of dimensions` | Too few training samples | Verify sample overlap between KIR and PLINK files |
+| `plink2 not found` | Not in PATH | Add plink2 to PATH |
+
+---
+
+## License
 
 PONG2 is licensed under the **GNU General Public License v3.0** (GPL-3.0).
 
-Full license text: [LICENSE](LICENSE) (included in the repository root)
+You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See [LICENSE](LICENSE) or the [GNU GPL-3.0 page](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
 
-You are free to use, modify, and distribute PONG2, provided that:
+---
 
-- You distribute any derivative work under the same GPL-3.0 license
-- You include the original copyright notice and license text
+## Citation
 
-See the [GNU GPL-3.0 page](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
+If you use PONG2 in your research, please cite:
 
+> Sadeeq SA, Leaton LA, Kichula KM, Farias TDJ, Font-Porterias N, Pollock NR, the Colorado Center for Personalized Medicine, Collora CE, Castelli EC, Gignoux CR, Norman PJ.
+> **PONG 2.0: Allele Imputation for the Killer Cell Immunoglobulin-Like Receptors.**
+> *Manuscript in preparation*, 2026.
 
-### Author 
+---
 
-```markdown
-Suraju A Sadeeq, Laura Ann Leaton, Katherine M Kichula, Neus Font-Porterias, Nicholas R Pollock,
-the Colorado Center for Personalized Medicine, Christopher E Collora, Erick C. Castelli, Christopher R Gignoux, Paul J Norman
-```
+## Contact & Support
 
-
-### Contact & Support
-
-- **GitHub Issues** (preferred for bug reports, feature requests, questions):  
+- **GitHub Issues** (preferred for bug reports, feature requests, questions):
   [https://github.com/NormanLabUCD/PONG2/issues](https://github.com/NormanLabUCD/PONG2/issues)
 
-- **Email** (for collaboration, private inquiries, or urgent support):  
+- **Email** (for collaboration or private inquiries):
   paul.norman@cuanschutz.edu
 
-- **Lab / Institution**:  
-  [Norman Lab](https://medschool.cuanschutz.edu/dbmi/lab-pages/norman-lab)  
-  [University of Colorado Anschutz Medical Campus](https://www.cuanschutz.edu/)  
-  [Department of Biomedical Informatics](https://news.cuanschutz.edu/dbmi), [Immunology & Microbiology](https://medschool.cuanschutz.edu/basic-sciences/departments/immunology-and-microbiology)
+- **Lab / Institution:**
+  [Norman Lab](https://medschool.cuanschutz.edu/dbmi/lab-pages/norman-lab) |
+  [University of Colorado Anschutz Medical Campus](https://www.cuanschutz.edu/) |
+  [Department of Biomedical Informatics](https://news.cuanschutz.edu/dbmi) |
+  [Immunology & Microbiology](https://medschool.cuanschutz.edu/basic-sciences/departments/immunology-and-microbiology)
 
-We aim to respond to issues and emails within 1–3 business days.  
+We aim to respond to issues and emails within 1–3 business days.
 Thank you for using PONG2 — happy KIR analysis! 🧬
-

@@ -83,6 +83,10 @@ if(assembly == "hg19" && locusregion == "Null"){
 
 #pong2 train --bfile ~/projects/PONG2/tests/example/chr19 --kfile ~/projects/PONG2/tests/example/kir_file.csv --output ~/projects/ --locus KIR2DL1 --assembly hg19
 
+# 1. Add error handling for missing locus in kir_position
+if(locusregion == "Null" && !locus %in% names(kir_position)){
+  stop(paste("Locus", locus, "not found in kir_position for assembly", assembly))
+}
 
 frequency_filter <- function(kir_data, locus, filtered_freq){
   allele1=paste0(locus, "_h1")
@@ -136,8 +140,6 @@ KIR_type <- hlaAllele(
 
 #Split into training and validation sets
 kirtab <- hlaSplitAllele(KIR_type, train.prop=kirSplit)
-#print(paste("KIR locus:", locus,", min:", min(region)))
-#cat(paste("KIR locus:", locus,", max:", max(region)))
 
 # Select best KIR region
 kir_geno_pos <- geno19$snp.position[geno19$snp.position >= min(region) & geno19$snp.position <= max(region)]
@@ -148,20 +150,20 @@ snpId <- kir_geno$snp.id
 train.geno <- hlaGenoSubset(geno19, snp.sel = match(snpId, geno19$snp.id), samp.sel = na.omit(match(kirtab$training$value$sample.id, geno19$sample.id)))
 test.geno <- hlaGenoSubset(geno19, samp.sel=na.omit(match(kirtab$validation$value$sample.id, geno19$sample.id)))
 
+# 2. Add check for empty SNP region
+if(length(kir_geno_pos) == 0){
+  stopCluster(cluster)
+  stop(paste("No SNPs found in region", min(region), "-", max(region),
+             "for locus:", locus))
+}
 
-# Print Summary
-cat("\n--- Parameter Settings ---\n")
-cat("Chromosome 19: ", chr19, "\n")
-cat("KIR File:      ", kirfile, "\n")
-cat("Locus:         ", locus, "\n")
-cat("Assembly:      ", assembly, "\n")
-cat("Output:        ", out, "\n")
-cat("N Classifier:  ", nclassifier, "\n")
-cat("Threads:       ", num_threads, "\n")
-cat("KIR Split:     ", kirSplit, "\n")
-cat("KIR MAF:       ", kirmaf, "\n")
-cat("Genotype MAC:  ", mac, "\n")
-cat(paste(locus, "Region:"), paste0(min(region), "-", max(region)), "\n")
+# 3. Add check for insufficient training samples
+if(length(train.geno$sample.id) < 10){
+  stopCluster(cluster)
+  stop(paste("Insufficient training samples:",
+             length(train.geno$sample.id), "for locus:", locus))
+}
+
 cat(paste(locus, "SNPs:"), length(kir_geno_pos), "\n")
 cat("Train Samples:", length(train.geno$sample.id), "\n")
 cat("Test Samples:", length(test.geno$sample.id), "\n")
@@ -174,7 +176,10 @@ model <- kirParallelAttrBagging(cl=cluster, kirtab$training, train.geno, nclassi
 #save results
 mobj <- hlaModelToObj(model)
 save(mobj, file=paste0(out, "/", locus,"_model.RData"))
+
 if(kirSplit < 1){
+  cat("Test data saved:", paste0(out, "/", locus, "_test.RData"), "\n")
+  cat("Split saved:", paste0(out, "/", locus, "_split.RData"), "\n")
   save(test.geno, file=paste0(out, "/", locus, "_test.RData"))
   save(kirtab, file=paste0(out, "/", locus, "_split.RData"))
 }

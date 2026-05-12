@@ -3,27 +3,35 @@
 ## Overview
 
 This vignette provides a complete, step-by-step guide to training custom
-KIR prediction models using the train command in PONG2. Training is
-useful when:
+KIR prediction models using the `train` command in PONG2.
 
--You have a new or population-specific reference dataset -You want to
-update models with additional samples -You need locus-specific models
-(e.g. only KIR3DL1/S1) -You want to experiment with different SNP
-quality filters
+Training is useful when:
 
-Prerequisites:
+- You have a new or population-specific reference dataset
+- You want to update models with additional samples
+- You need locus-specific models (e.g. only `KIR3DL1` or `KIR2DL1`)
+- You want to experiment with different SNP quality or allele frequency
+  filters
 
-- PLINK 2.0 installed and in PATH
-- R ≥ 4.0 with PONG2 installed
-- Reference PLINK files (chr19 or KIR region)
-- Known KIR allele calls in CSV format
+------------------------------------------------------------------------
 
-## Input Data Requirements
+## Prerequisites
 
-1.  Reference genotypes (–bfile)
+| Requirement           | Version | Notes                        |
+|-----------------------|---------|------------------------------|
+| PLINK2                | ≥ 2.0   | Must be in PATH              |
+| R                     | ≥ 4.0   | With PONG2 installed         |
+| Reference PLINK files | —       | chr19 covering the KIR locus |
+| KIR allele calls      | —       | CSV format (see below)       |
 
-- PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19)
-- Recommended: extract region first to reduce size
+------------------------------------------------------------------------
+
+## Step 1: Prepare Input Data
+
+### 1a. Reference genotypes (`--bfile`)
+
+PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).
+Extract chr19 from your full-genome PLINK files to reduce size:
 
 ``` bash
 plink2 \
@@ -33,57 +41,168 @@ plink2 \
   --out reference_chr19
 ```
 
-2.  Known KIR calls (–kfile)
+### 1b. Known KIR allele calls (`--kfile`)
 
-CSV file with sample IDs and allele calls Minimal format with header
-optional:
+A comma-separated CSV file with sample IDs and phased KIR allele calls.
+Each locus requires two columns representing the two haplotypes (`_h1`
+and `_h2`).
 
-| sample_id   | KIR2DL1_h1 | KIR2DL1_h2 | KIR3DL1_h1 | KIR3DL1_h2 |
-|:------------|:-----------|:-----------|:-----------|:-----------|
-| `SAMPLE001` | \*00101    | \*00302    | \*00101    | \*00201    |
-| `SAMPLE002` | \*00104    | \*0000     | \*00401    | \*00501    |
-| `SAMPLE003` | \*009      | \*00601    | \*00302    | \*00101    |
+#### Format
 
-- Columns: two per KIR locus/gene where h1 and h2 represent KIR
-  haplotypes
-- Alleles: use standard nomenclature (e.g. *001,* 00201)
-- null allele: leave as `*0000`
+    Sample,KIR2DL1_h1,KIR2DL1_h2,KIR3DL1_h1,KIR3DL1_h2
+    SAMPLE001,KIR2DL1*00101,KIR2DL1*00302,KIR3DL1*001,KIR3DL1*002
+    SAMPLE002,KIR2DL1*00104,KIR2DL1*0000,KIR3DL1*004,KIR3DL1*005
+    SAMPLE003,KIR2DL1*009,KIR2DL1*00601,KIR3DL1*00302,KIR3DL1*001
 
-## Run training
+#### Rules
+
+| Rule | Detail |
+|----|----|
+| Header required | First row must be `Sample,<locus>_h1,<locus>_h2,...` |
+| Sample IDs | Must exactly match IDs in the PLINK `.fam` file |
+| Allele names | Use full standard nomenclature (e.g. `KIR3DL1*001`, `KIR2DL1*00201`) |
+| Null allele | Use `KIR<locus>*0000` (not blank, not `null`) |
+| Unresolved alleles | Rows with `*new` or `*unresolved` are automatically excluded during training |
+
+------------------------------------------------------------------------
+
+## Step 2: Run Training
 
 ``` bash
 pong2 train \
   -i reference_chr19 \
   -k kir_calls.csv \
-  -o models/custom \
-  -l KIR \
+  -o models/KIR3DL1 \
+  -l KIR3DL1 \
   -a hg38 \
-  -t 10
+  -t 20
 ```
 
-## After training completes, the output directory (-o) will contain:
-
-- model.rds or model.RData — trained prediction model (main file)
-- training_log.txt — summary of training process, metrics, and warnings
-- tmp/ — temporary files (can be deleted)
-
-## Using a custom model for imputation
+### With optional parameters
 
 ``` bash
-pong2 impute \
-  -i chr19 \
-  -o results/ \
-  -l KIR \
+pong2 train \
+  -i reference_chr19 \
+  -k kir_calls.csv \
+  -o models/KIR3DL1 \
+  -l KIR3DL1 \
   -a hg38 \
-  -m models/custom/model.rds
+  -t 20 \
+  --nclassifier 200 \
+  --split 0.8 \
+  --kirmaf 0.005 \
+  --mac 5
 ```
 
-*Note:* The `-m, --model` flag is used to specify a custom model file.
+### Key training parameters
 
-## Troubleshooting Training
+| Flag | Default | Description |
+|----|----|----|
+| `--nclassifier` | `100` | Number of ensemble classifiers — higher = more accurate but slower |
+| `--split` | `0.7` | Proportion of samples for training (remainder used for validation) |
+| `--kirmaf` | `0.00` | Minimum KIR allele frequency — filters rare alleles from training |
+| `--mac` | `3` | Minimum allele count for SNPs — removes very rare variants |
+| `-r, --region` | Optimized default | Custom SNP region (e.g. `55281035-55295784` for hg19) |
 
-- “No matching samples” → Ensure sample IDs in –kfile exactly match
-  PLINK .fam
-- Low SNP coverage → Increase –filter or pre-impute reference panel
-- Memory issues → Reduce threads or use a machine with more RAM
-- Slow training → Use more –threads or smaller reference dataset
+------------------------------------------------------------------------
+
+## Step 3: Training Output
+
+After training completes, the output directory (`-o`) will contain:
+
+| File                  | Description                                       |
+|-----------------------|---------------------------------------------------|
+| `<locus>_model.RData` | Trained prediction model — main output            |
+| `<locus>_test.RData`  | Test genotypes (only when `--split < 1`)          |
+| `<locus>_split.RData` | Train/test split object (only when `--split < 1`) |
+
+> **Note:** Temporary files in `tmp/` are automatically removed after
+> training completes.
+
+------------------------------------------------------------------------
+
+## Step 4: Evaluate Model Performance
+
+If `--split < 1`, PONG2 holds out a validation set during training. Load
+the saved objects in R to evaluate:
+
+``` r
+library(PONG2)
+
+# Load model and test data
+load("models/KIR3DL1/KIR3DL1_model.RData")
+load("models/KIR3DL1/KIR3DL1_test.RData")
+load("models/KIR3DL1/KIR3DL1_split.RData")
+
+# Rebuild model from object
+model <- hlaModelFromObj(mobj)
+
+# Predict on test set
+pred <- kirPredict(model, test.geno, type = "response+prob")
+
+# Compare predictions vs truth
+truth <- kirtab$validation
+summary(pred)
+```
+
+------------------------------------------------------------------------
+
+## Step 5: Use a Custom Model for Imputation
+
+Once trained, use your model directly with `pong2 impute`:
+
+``` bash
+# Note: custom model support via -m flag is available in PONG2 >= 1.1.0
+pong2 impute \
+  -i chr19_target \
+  -o results/ \
+  -l KIR3DL1 \
+  -a hg38 \
+  -m models/KIR3DL1/KIR3DL1_model.RData
+```
+
+Or load it directly in R:
+
+``` r
+library(PONG2)
+
+# Load your custom model
+load("models/KIR3DL1/KIR3DL1_model.RData")
+model <- hlaModelFromObj(mobj)
+
+# Load target genotypes
+geno <- hlaBED2Geno("chr19_target.bed", "chr19_target.fam", "chr19_target.bim",
+                    import.chr = "19", assembly = "hg38")
+
+# Predict
+pred <- kirPredict(model, geno, type = "response+prob")
+```
+
+------------------------------------------------------------------------
+
+## Troubleshooting
+
+| Error | Likely Cause | Fix |
+|----|----|----|
+| `No matching samples` | Sample IDs in `--kfile` don’t match `.fam` | Check ID format — must match exactly |
+| `Insufficient training samples` | Too few overlapping samples (\<10) | Verify PLINK and KIR file sample overlap |
+| `No SNPs found in region` | Wrong assembly or region coordinates | Check `--assembly` and `--region` |
+| `No model found for locus` | Locus name typo or unsupported locus | Check locus spelling (e.g. `KIR3DL1` not `KIR3DL`) |
+| Memory issues | Too many threads or large dataset | Reduce `--threads` or use HPC with more RAM |
+| Slow training | Insufficient threads | Increase `--threads` or reduce `--nclassifier` |
+| Low accuracy | Too few training samples or rare alleles | Increase sample size or adjust `--kirmaf` |
+
+------------------------------------------------------------------------
+
+## Next Steps
+
+- See vignette
+  [PONG2-imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html)
+  for the full imputation workflow
+- See vignette [PONG2
+  Basics](https://normanlabucd.github.io/PONG2/articles/PONG2-basic.html)
+  for installation and quick start
+- Report issues: [Open a GitHub
+  issue](https://github.com/NormanLabUCD/PONG2/issues/new)
+
+Happy KIR model training! 🧬

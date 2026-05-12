@@ -3,24 +3,39 @@
 ## Overview
 
 This vignette provides a complete, step-by-step guide to performing KIR
-allele imputation using the `impute` command in PONG2. The workflow
-covers: - Preparing input data (PLINK → chr19 extraction) - Run PONG2
-imputation - Pre-imputation - External pre-imputation with Michigan
-Imputation Server (recommended for highest accuracy) - Running
-`pong2 impute` - Interpreting results
+allele imputation using the `impute` command in PONG2.
+
+The workflow covers:
+
+- Preparing input data (PLINK → chr19 extraction)
+- Running basic PONG2 imputation
+- Checking SNP overlap with the 1KGP reference panel
+- Pre-phasing the KIR region with Eagle2
+- Local pre-imputation using minimac4 (`--fill-missing`)
+- External pre-imputation via Michigan Imputation Server
+- Interpreting results
+
+------------------------------------------------------------------------
 
 ## Prerequisites
 
-PLINK 2.0 installed and in PATH R ≥ 4.0 with PONG2 installed (Optional)
-minimac4 ≥ 4.1.6 for –fill-missing (Optional) Eagle2 or SHAPEIT5 for
-phasing
+| Requirement   | Version | Notes                     |
+|---------------|---------|---------------------------|
+| PLINK2        | ≥ 2.0   | Must be in PATH           |
+| R             | ≥ 4.0   | With PONG2 installed      |
+| minimac4      | ≥ 4.1.6 | Only for `--fill-missing` |
+| Eagle2        | ≥ 2.4   | Only for pre-phasing      |
+| bgzip & tabix | HTSlib  | Only for `--fill-missing` |
 
-## Step 1: Prepare input data (extract chr19 KIR region)
+------------------------------------------------------------------------
 
-PONG2 works best when input files are restricted to chromosome 19 (or
-the KIR locus). Extract chr19 from full-genome PLINK files:
+## Step 1: Prepare Input Data
 
-``` r
+PONG2 works best when input files are restricted to chromosome 19
+(covering the KIR locus). Extract chr19 from your full-genome PLINK
+files:
+
+``` bash
 plink2 \
   --bfile your_full_genome_prefix \
   --chr 19 \
@@ -28,111 +43,222 @@ plink2 \
   --out chr19_only
 ```
 
-This creates chr19_only.bed, chr19_only.bim, chr19_only.fam.
+This creates `chr19_only.bed`, `chr19_only.bim`, and `chr19_only.fam`.
 
-## Step 2: Run PONG2 imputation
+------------------------------------------------------------------------
 
-Basic command (assembly can be hg19 or hg38):
+## Step 2: Run Basic PONG2 Imputation
 
 ``` bash
-# filter can be 0.005 or 0.01 (0.005 allows more rare KIR alleles in output)
+# --filter can be 0.005 or 0.01
+# 0.005 allows more rare KIR alleles in the output
 pong2 impute \
   -i chr19_only \
-  -o results/final \
-  -l KIR \
-  -a hg38 \
-  -t 10 \
-  --filter 0.005
-```
-
-## Pre-imputation
-
-If the initial SNP matching rate in the KIR region is low (e.g., \<
-50%), PONG2 provides two main strategies to improve accuracy by imputing
-missing or low-quality SNPs before running the core PONG2 prediction
-step. **Note**: Pre-phasing the KIR region is required for both local
-and external pre-imputation.
-
-## Local imputation fallback (built-in)
-
-- Phasing with Eagle (<https://alkesgroup.broadinstitute.org/Eagle/>)
-
-``` bash
-eagle \
-  --bfile=chr19 \
-  --geneticMapFile=genetic_map_hg19.txt.gz \
-  --outPrefix=chr19.phased \
-  --chrom=19 \
-  --numThreads=50 \
-  --bpStart=55200000 \
-  --bpEnd=55300000
-```
-
-## Run PONG2 with local pre-imputation using minimac4 (built-in – quick & automated) using flag the `--fill-missing`
-
-``` bash
-pong2 impute \
-  -i chr19.phased.vcf \
-  -o results/local_impute \
-  -l KIR \
-  -a hg38 \
-  -t 10 \
-  --filter 0.005 \
-  --fill-missing
-```
-
-## External pre-imputation (recommended for best accuracy)
-
-- Export to VCF for phasing:
-
-``` bash
-plink2 \
-  --bfile chr19_only \
-  --export vcf \
-  --out chr19_only
-```
-
-- Upload to Michigan Imputation Server: – You can skip the `phase`
-  option if you have already performed this step – Reference panel:
-  multi-ancestry 1KGP reference panel – indicate your genomic build
-  (hg19/hg38) – Chromosome: 19 only – Submit → wait for email (hours to
-  days)
-
-## Convert to PLINK:
-
-``` bash
-plink2 \
-  --vcf imputed.dose.vcf.gz \
-  dosage=DS \
-  --make-bed \
-  --out imputed_ready
-```
-
-## Run PONG2 imputation (no need for –fill-missing):
-
-``` bash
-pong2 impute \
-  -i imputed_ready \
-  -o results/final \
-  -l KIR \
+  -o results/basic \
+  -l KIR3DL1 \
   -a hg38 \
   -t 16 \
   --filter 0.005
 ```
 
-## Step 3: Interpreting output
+PONG2 will automatically check the SNP overlap between your data and the
+1KGP reference panel in the KIR region and report the match rate.
 
-``` markdown
-After pong2 impute:
-predicted_kir_genotypes.csv — main results
-Columns: sample ID, predicted allele 1, allele 2, confidence, etc.
-snp_matching_report.txt — SNP coverage % and quality metrics
-imputation_log.txt — detailed log
-tmp/ — temporary files (can be deleted)
+------------------------------------------------------------------------
+
+## Step 3: Check SNP Overlap
+
+> **NOTE: KIR Region SNP Overlap between input data and 1KGP**
+>
+> Overlap rate is computed between your input data and the 1000 Genomes
+> Project (1KGP) reference panel in the KIR region
+> (chr19:54,600,000–55,200,000 for hg38; chr19:55,000,000–55,400,000 for
+> hg19).
+>
+> | Overlap Rate | Status  | Action                                     |
+> |--------------|---------|--------------------------------------------|
+> | ≥ 50%        | ✅ Pass | Proceed with PONG2 directly                |
+> | \< 50%       | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+
+If your match rate is sufficient (≥ 50%), PONG2 will proceed
+automatically. If not, use one of the pre-imputation strategies below.
+
+------------------------------------------------------------------------
+
+## Step 4: Pre-imputation (when SNP overlap \< 50%)
+
+Pre-phasing the KIR region is **required** before any pre-imputation
+strategy.
+
+### Pre-phase with Eagle2
+
+#### hg19
+
+``` bash
+eagle \
+  --bfile=chr19_only \
+  --geneticMapFile=genetic_map_hg19.txt.gz \
+  --outPrefix=chr19.phased \
+  --chrom=19 \
+  --numThreads=20 \
+  --bpStart=55000000 \
+  --bpEnd=55400000
 ```
 
-For model training, see vignette
-[“PONG2-training”](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html).
-Questions or issues? [Open a GitHub
-issue](https://github.com/NormanLabUCD/PONG2/issues/new) Happy KIR
-imputation! 🧬
+#### hg38
+
+``` bash
+eagle \
+  --bfile=chr19_only \
+  --geneticMapFile=genetic_map_hg38.txt.gz \
+  --outPrefix=chr19.phased \
+  --chrom=19 \
+  --numThreads=20 \
+  --bpStart=54000000 \
+  --bpEnd=55000000
+```
+
+Eagle2 outputs a phased VCF: `chr19.phased.vcf.gz`
+
+------------------------------------------------------------------------
+
+### Option A: Local Pre-imputation with minimac4 (built-in)
+
+Pass the pre-phased VCF directly to PONG2 using `--vcf` and
+`--fill-missing`.
+
+> ⚠️ **Important:** `--vcf` is the **only input** required with
+> `--fill-missing`.  
+> PLINK files cannot hold phased haplotype data — the pipeline derives
+> everything from the VCF internally. Do **not** supply `-i` together
+> with `--fill-missing`.
+
+``` bash
+pong2 impute \
+  --vcf chr19.phased.vcf.gz \
+  -o results/local_impute \
+  -l KIR3DL1 \
+  -a hg19 \
+  -t 20 \
+  --filter 0.005 \
+  --fill-missing
+```
+
+------------------------------------------------------------------------
+
+### Option B: External Pre-imputation (recommended for highest accuracy)
+
+Pre-impute your chr19 data using a public server before running PONG2.
+
+#### Step B1: Export phased VCF
+
+The phased VCF from Eagle2 (`chr19.phased.vcf.gz`) is ready for upload.
+If you need to export from PLINK first:
+
+``` bash
+plink2 \
+  --bfile chr19_only \
+  --export vcf bgz \
+  --out chr19_only
+tabix -p vcf chr19_only.vcf.gz
+```
+
+#### Step B2: Upload to Michigan Imputation Server
+
+- URL: <https://imputationserver.sph.umich.edu/>
+- Reference panel: TOPMed r5 (recommended for diverse populations) or
+  1KGP Phase 3
+- Genome build: match your data (hg19 or hg38)
+- Chromosome: 19 only
+- Phasing: select `Eagle v2.4` if uploading unphased data; skip if
+  already phased
+- Submit and wait for email notification (typically hours to days)
+
+#### Step B3: Download and convert imputed VCF to PLINK
+
+``` bash
+# Unzip results (password provided by server via email)
+unzip -P <password> chr19.zip
+
+# Convert imputed VCF to PLINK
+plink2 \
+  --vcf chr19.dose.vcf.gz dosage=DS \
+  --import-dosage-certainty 0.3 \
+  --make-bed \
+  --out imputed_chr19
+```
+
+#### Step B4: Run PONG2 on imputed data
+
+``` bash
+pong2 impute \
+  -i imputed_chr19 \
+  -o results/final \
+  -l KIR3DL1 \
+  -a hg38 \
+  -t 16 \
+  --filter 0.005
+```
+
+------------------------------------------------------------------------
+
+### Option C: Force imputation (not recommended)
+
+Proceed despite low SNP match rate — use only when you understand the
+implications for accuracy:
+
+``` bash
+pong2 impute \
+  -i chr19_only \
+  -o results/forced \
+  -l KIR3DL1 \
+  -a hg19 \
+  --force
+```
+
+------------------------------------------------------------------------
+
+## Step 5: Interpreting Output
+
+After `pong2 impute` completes, results are saved in `<output>/KIR/`:
+
+| File                | Description                                           |
+|---------------------|-------------------------------------------------------|
+| `KIR/<locus>.csv`   | Predicted KIR alleles per sample (main results)       |
+| `KIR/<locus>.RData` | Full prediction object including allele probabilities |
+
+### Output CSV format
+
+    sample.id, KIR3DL1.1, KIR3DL1.2, prob.KIR3DL1.1, prob.KIR3DL1.2
+    HG00096,   KIR3DL1*001, KIR3DL1*002, 0.98, 0.95
+    HG00097,   KIR3DL1*005, KIR3DL1*015, 0.87, 0.91
+
+### Large sample datasets
+
+For datasets with **\>2,000 samples**, PONG2 automatically splits
+prediction into chunks of 2,000 samples to prevent memory issues.
+Results are combined and saved as a single output file — no action
+required from the user.
+
+------------------------------------------------------------------------
+
+## Summary: Which Workflow to Choose?
+
+| Scenario | Recommended approach |
+|----|----|
+| SNP overlap ≥ 50% | Run `pong2 impute -i` directly |
+| SNP overlap \< 50%, quick run needed | Eagle2 → `pong2 impute --vcf --fill-missing` |
+| SNP overlap \< 50%, highest accuracy | Eagle2 → Michigan Server → `pong2 impute -i` |
+| Low overlap, understand risks | `pong2 impute -i --force` |
+
+------------------------------------------------------------------------
+
+## Next Steps
+
+- See vignette
+  [PONG2-training](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html)
+  for custom model training
+- Report issues: [Open a GitHub
+  issue](https://github.com/NormanLabUCD/PONG2/issues/new)
+
+Happy KIR imputation! 🧬

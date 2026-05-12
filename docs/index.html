@@ -56,17 +56,11 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="pong2--kir-genotype-imputation--model-training">PONG2 – KIR Genotype Imputation &amp; Model Training<a class="anchor" aria-label="anchor" href="#pong2--kir-genotype-imputation--model-training"></a>
 </h1></div>
-<p><a href="https://www.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&amp;logoColor=white" alt="R"></a> <a href="https://www.gnu.org/licenses/gpl-3.0" class="external-link"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a> <a href="https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0" class="external-link"><img src="https://img.shields.io/github/v/release/NormanLabUCD/PONG2" alt="GitHub release"></a> <!-- Add real CI badge if you set up GitHub Actions later --> <!-- [![R-CMD-check](https://github.com/NormanLabUCD/PONG2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/NormanLabUCD/PONG2/actions) --></p>
-<p><strong>PONG2</strong> is an R package with C++ acceleration (via Rcpp) for <strong>high-accuracy imputation</strong> and <strong>training</strong> of Killer-cell Immunoglobulin-like Receptor (<strong>KIR</strong>) genotypes from SNP array in the KIR locus (chromosome 19).</p>
-<p>It is optimized for population genetics, immunogenetics, and large-scale biobank studies requiring reliable KIR allele calls.</p>
-<p><strong>Main CLI commands:</strong></p>
-<ul>
-<li>
-<code>impute</code> – predict KIR alleles from target PLINK files<br>
-</li>
-<li>
-<code>train</code> – build a new prediction model from reference genotypes + known KIR calls</li>
-</ul>
+<p><a href="https://www.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&amp;logoColor=white" alt="R"></a> <a href="https://www.gnu.org/licenses/gpl-3.0" class="external-link"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a> <a href="https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0" class="external-link"><img src="https://img.shields.io/github/v/release/NormanLabUCD/PONG2" alt="GitHub release"></a></p>
+<p><strong>PONG2</strong> is an R package with C++ acceleration (via Rcpp) for <strong>high-accuracy imputation</strong> and <strong>training</strong> of Killer-cell Immunoglobulin-like Receptor (<strong>KIR</strong>) genotypes from SNP array data in the KIR locus (chromosome 19q13.4).</p>
+<p>It is optimized for population genetics, immunogenetics, and large-scale biobank studies requiring reliable KIR allele calls across diverse ancestries.</p>
+<p><strong>Main CLI commands:</strong> - <code>impute</code> – predict KIR alleles from target PLINK files - <code>train</code> – build a new prediction model from reference genotypes + known KIR calls</p>
+<hr>
 <div class="section level2">
 <h2 id="table-of-contents">Table of Contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
 </h2>
@@ -74,14 +68,7 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#features">Features</a></li>
 <li><a href="#requirements">Requirements</a></li>
-<li>
-<a href="#installation">Installation</a>
-<ul>
-<li><a href="#from-github-recommended-for-latest-version">From GitHub (recommended for latest version)</a></li>
-<li><a href="#from-source-tarball">From source tarball</a></li>
-<li><a href="#from-source-directory-developer-mode">From source directory (developer mode)</a></li>
-</ul>
-</li>
+<li><a href="#installation">Installation</a></li>
 <li><a href="#cli-setup--quick-start">CLI Setup &amp; Quick Start</a></li>
 <li>
 <a href="#usage">Usage</a>
@@ -94,309 +81,346 @@
 <li><a href="#input--output-formats">Input &amp; Output Formats</a></li>
 <li><a href="#dependencies--external-tools">Dependencies &amp; External Tools</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
-<li><a href="#development--contributing">Development &amp; Contributing</a></li>
 <li><a href="#license">License</a></li>
 <li><a href="#citation">Citation</a></li>
 <li><a href="#contact--support">Contact &amp; Support</a></li>
 </ul>
+<hr>
 </div>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>PONG2 enables scalable and accurate KIR genotyping by combining:</p>
 <ul>
-<li>region-specific PLINK2 preprocessing<br>
-</li>
-<li>optional local minimac4 imputation for missing variants<br>
-</li>
-<li>supervised allele prediction models tailored to the polymorphic KIR region</li>
+<li>Region-specific PLINK2 preprocessing</li>
+<li>Optional local minimac4 pre-imputation for missing variants</li>
+<li>Supervised allele prediction models tailored to the highly polymorphic KIR region</li>
 </ul>
-<p>It supports both hg19 and hg38 assemblies and is particularly useful for studying immune response variation, HLA–KIR interactions, and disease association in diverse populations.</p>
+<p>It supports both <strong>hg19</strong> and <strong>hg38</strong> assemblies and is particularly useful for studying immune response variation, HLA–KIR interactions, and disease associations in diverse populations.</p>
+<hr>
 </div>
 <div class="section level2">
 <h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
 </h2>
 <ul>
-<li>Automatic handling of hg19 / hg38 coordinate differences<br>
+<li>Multi-ancestry pre-trained models (EUR, AMR, AFR, EAS, SAS)</li>
+<li>Automatic handling of hg19 / hg38 coordinate differences</li>
+<li>Configurable SNP missingness threshold</li>
+<li>Built-in local imputation fallback (<code>--fill-missing</code>) using minimac4</li>
+<li>Support for external pre-imputation (e.g. Michigan Imputation Server)</li>
+<li>Multi-threading via <code>--threads</code>
 </li>
-<li>Configurable SNP missingness threshold<br>
-</li>
-<li>Built-in local imputation fallback (<code>--fill-missing</code>)<br>
-</li>
-<li>Support for external pre-imputation (e.g. Michigan Imputation Server)<br>
-</li>
-<li>Multi-threading via <code>--threads</code><br>
-</li>
-<li>Force-run mode and missing SNP imputation strategies<br>
-</li>
+<li>Automatic chunked prediction for large biobank datasets (&gt;2,000 samples)</li>
+<li>Force-run mode for low SNP match scenarios</li>
 <li>Clean separation of preprocessing and prediction steps</li>
 </ul>
+<hr>
 </div>
 <div class="section level2">
 <h2 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
 </h2>
-<p><strong>R version</strong><br>
-≥ 4.0</p>
-<p><strong>Required R packages</strong> (loaded at runtime): - readr - tidyverse - parallel</p>
+<p><strong>R version:</strong> ≥ 4.0</p>
+<p><strong>Required R packages</strong> (loaded at runtime): - <code>readr</code> - <code>tidyverse</code> - <code>parallel</code></p>
 <p><strong>System tools</strong> (must be in PATH):</p>
-<ul>
-<li>PLINK 2.0 (required)</li>
-<li>minimac4 ≥ 4.1.6 (required only when using <code>--fill-missing</code>)</li>
-<li>bgzip &amp; tabix (HTSlib – usually bundled with minimac4)</li>
-</ul>
+<table class="table">
+<thead><tr>
+<th>Tool</th>
+<th>Version</th>
+<th>Required</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>PLINK2</td>
+<td>≥ 2.0</td>
+<td>Always</td>
+</tr>
+<tr>
+<td>minimac4</td>
+<td>≥ 4.1.6</td>
+<td>Only with <code>--fill-missing</code>
+</td>
+</tr>
+<tr>
+<td>bgzip &amp; tabix</td>
+<td>HTSlib</td>
+<td>Only with <code>--fill-missing</code>
+</td>
+</tr>
+<tr>
+<td>Eagle2</td>
+<td>≥ 2.4</td>
+<td>Only for pre-phasing before <code>--fill-missing</code>
+</td>
+</tr>
+</tbody>
+</table>
+<hr>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="section level3">
-<h3 id="from-github-recommended-for-latest-version">From GitHub (recommended for latest version)<a class="anchor" aria-label="anchor" href="#from-github-recommended-for-latest-version"></a>
+<h3 id="from-github-recommended">From GitHub (recommended)<a class="anchor" aria-label="anchor" href="#from-github-recommended"></a>
 </h3>
-<p>Install the development or stable version directly from the repository:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install remotes if needed</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://remotes.r-lib.org" class="external-link">"remotes"</a></span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://remotes.r-lib.org" class="external-link">"remotes"</a></span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Install PONG2 from GitHub</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"https://github.com/NormanLabUCD/PONG2"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"NormanLabUCD/PONG2"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="standard-install">Standard install<a class="anchor" aria-label="anchor" href="#standard-install"></a>
+<h3 id="from-source-tarball">From source tarball<a class="anchor" aria-label="anchor" href="#from-source-tarball"></a>
 </h3>
-<p>Download the source tarball from the release: <a href="https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/PONG2_1.0.0.tar.gz" class="external-link">PONG2_1.0.0.tar.gz</a></p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL PONG2_1.0.0.tar.gz</span></code></pre></div>
+<p>Download <a href="https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/PONG2_1.0.0.tar.gz" class="external-link">PONG2_1.0.0.tar.gz</a> then:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Standard install</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL PONG2_1.0.0.tar.gz</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co"># Custom library path</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL <span class="at">--library</span><span class="op">=</span>/your/custom/path PONG2_1.0.0.tar.gz</span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="custom-library-path">Custom library path<a class="anchor" aria-label="anchor" href="#custom-library-path"></a>
+<h3 id="cli-setup">CLI Setup<a class="anchor" aria-label="anchor" href="#cli-setup"></a>
 </h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL <span class="at">--library</span><span class="op">=</span><span class="st">"installation path"</span> PONG2_1.0.0.tar.gz</span></code></pre></div>
+<p>After installation, make the <code>pong2</code> script executable and add it to your PATH:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Locate the pong2 script</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="va">PONG2_BIN</span><span class="op">=</span><span class="va">$(</span><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">"cat(system.file('scripts', 'pong2', package='PONG2'))"</span><span class="va">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Make executable</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="fu">chmod</span> +x <span class="st">"</span><span class="va">$PONG2_BIN</span><span class="st">"</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># Add to PATH (add this to your ~/.bashrc or ~/.bash_profile)</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span><span class="st">"</span><span class="va">$(</span><span class="fu">dirname</span> <span class="va">$PONG2_BIN)</span><span class="st">:</span><span class="va">$PATH</span><span class="st">"</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co"># Verify installation</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="ex">pong2</span> version</span></code></pre></div>
+<hr>
 </div>
-<div class="section level3">
-<h3 id="usage">USAGE<a class="anchor" aria-label="anchor" href="#usage"></a>
-</h3>
+</div>
+<div class="section level2">
+<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
+</h2>
 <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">pong2</span> <span class="op">&lt;</span>command<span class="op">&gt;</span> <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
-</div>
 <div class="section level3">
-<h3 id="basic-imputation">Basic imputation<a class="anchor" aria-label="anchor" href="#basic-imputation"></a>
+<h3 id="help">Help<a class="anchor" aria-label="anchor" href="#help"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> bfile <span class="at">-o</span> output <span class="at">-l</span> KIR <span class="at">-a</span> hg19</span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="imputation-with-local-missing-snp-fill-in">Imputation with local missing SNP fill-in<a class="anchor" aria-label="anchor" href="#imputation-with-local-missing-snp-fill-in"></a>
-</h3>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> bfile <span class="at">-o</span> output <span class="at">-l</span> KIR <span class="at">-a</span> hg19 <span class="at">--fill-missing</span> <span class="at">-t</span> 20</span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="train-a-new-model">Train a new model<a class="anchor" aria-label="anchor" href="#train-a-new-model"></a>
-</h3>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="at">-i</span> bfile <span class="at">-k</span> kfile <span class="at">-o</span> output <span class="at">-l</span> KIR <span class="at">-a</span> hg19 <span class="at">-t</span> 20</span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="specific-detailed-help">Specific detailed help<a class="anchor" aria-label="anchor" href="#specific-detailed-help"></a>
-</h3>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span>                <span class="co"># General overview + list of commands</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> impute         <span class="co"># Detailed help for imputation</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> train          <span class="co"># Detailed help for training</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="ex">pong2</span> version               <span class="co"># Show version number</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span>              <span class="co"># General overview + list of commands</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> impute       <span class="co"># Detailed help for imputation</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> train        <span class="co"># Detailed help for training</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="ex">pong2</span> version             <span class="co"># Show version number</span></span></code></pre></div>
+<hr>
 </div>
 <div class="section level3">
 <h3 id="impute-command">impute command<a class="anchor" aria-label="anchor" href="#impute-command"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<p>Predict KIR alleles from a target PLINK dataset.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="required-flags">Required flags<a class="anchor" aria-label="anchor" href="#required-flags"></a>
+</h4>
 <table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
 <thead><tr>
-<th align="left">Flag</th>
-<th align="left">Description</th>
-<th align="left">Example Value</th>
+<th>Flag</th>
+<th>Description</th>
+<th>Example</th>
 </tr></thead>
 <tbody>
 <tr>
-<td align="left"><code>-i, --input</code></td>
-<td align="left">PLINK bed/bim/fam prefix (should cover KIR locus on chr19)</td>
-<td align="left"><code>data/my_genotypes_chr19</code></td>
+<td><code>-i, --bfile</code></td>
+<td>PLINK bed/bim/fam prefix (chr19)</td>
+<td><code>data/chr19</code></td>
 </tr>
 <tr>
-<td align="left"><code>-o, --output</code></td>
-<td align="left">Output directory (will be created if it doesn’t exist)</td>
-<td align="left"><code>results/imputation</code></td>
+<td><code>-o, --output</code></td>
+<td>Output directory</td>
+<td><code>results/imputation</code></td>
 </tr>
 <tr>
-<td align="left"><code>-l, --locus</code></td>
-<td align="left">Target locus (currently only KIR is supported)</td>
-<td align="left"><code>KIR</code></td>
+<td><code>-l, --locus</code></td>
+<td>KIR locus to impute</td>
+<td><code>KIR3DL1</code></td>
 </tr>
 <tr>
-<td align="left"><code>-a, --assembly</code></td>
-<td align="left">Genome build used in the data</td>
-<td align="left">
+<td><code>-a, --assembly</code></td>
+<td>Genome build</td>
+<td>
 <code>hg19</code> or <code>hg38</code>
 </td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="optional-flags">Optional flags<a class="anchor" aria-label="anchor" href="#optional-flags"></a>
-</h3>
+<div class="section level4">
+<h4 id="optional-flags">Optional flags<a class="anchor" aria-label="anchor" href="#optional-flags"></a>
+</h4>
 <table class="table">
 <colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
+<col width="21%">
+<col width="32%">
+<col width="46%">
 </colgroup>
 <thead><tr>
-<th align="left">Flag</th>
-<th align="left">Default</th>
-<th align="left">Description</th>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
 </tr></thead>
 <tbody>
 <tr>
-<td align="left"><code>--filter</code></td>
-<td align="left">
-<code>0.01</code> or <code>0.005</code>
+<td><code>--filter</code></td>
+<td><code>0.005</code></td>
+<td>Allele frequency filter threshold (<code>0.005</code> or <code>0.01</code>)</td>
+</tr>
+<tr>
+<td><code>-t, --threads</code></td>
+<td><code>4</code></td>
+<td>Number of CPU threads</td>
+</tr>
+<tr>
+<td><code>-f, --force</code></td>
+<td><code>false</code></td>
+<td>Proceed even if SNP matching rate is low (&lt;50%)</td>
+</tr>
+<tr>
+<td><code>--fill-missing</code></td>
+<td><code>false</code></td>
+<td>Impute missing SNPs locally with minimac4 (requires <code>--vcf</code>)</td>
+</tr>
+<tr>
+<td><code>--vcf</code></td>
+<td>—</td>
+<td>Pre-phased VCF file required when using <code>--fill-missing</code>
 </td>
-<td align="left">KIR genotype quality filter threshold used in model training</td>
-</tr>
-<tr>
-<td align="left"><code>-t, --threads</code></td>
-<td align="left"><code>20</code></td>
-<td align="left">Number of CPU threads</td>
-</tr>
-<tr>
-<td align="left"><code>-f, --force</code></td>
-<td align="left"><code>false</code></td>
-<td align="left">Proceed even if SNP matching rate is low</td>
-</tr>
-<tr>
-<td align="left"><code>--fill-missing</code></td>
-<td align="left"><code>false</code></td>
-<td align="left">Impute missing SNPs locally with minimac4</td>
-</tr>
-<tr>
-<td align="left"><code>-m, --model</code></td>
-<td align="left"><code>false</code></td>
-<td align="left">imputation with your own built model</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level4">
+<h4 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
+</h4>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Basic imputation</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> example/chr19 <span class="at">-o</span> output <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19</span></code></pre></div>
+<hr>
+</div>
 </div>
 <div class="section level3">
 <h3 id="train-command">train command<a class="anchor" aria-label="anchor" href="#train-command"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<p>Build a new KIR prediction model from reference genotypes and known KIR calls.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="required-flags-1">Required flags<a class="anchor" aria-label="anchor" href="#required-flags-1"></a>
+</h4>
 <table class="table">
 <colgroup>
-<col width="50%">
-<col width="50%">
+<col width="21%">
+<col width="46%">
+<col width="32%">
 </colgroup>
 <thead><tr>
-<th align="left">Flag</th>
-<th align="left">Description</th>
+<th>Flag</th>
+<th>Description</th>
+<th>Example</th>
 </tr></thead>
 <tbody>
 <tr>
-<td align="left"><code>-i, --bfile</code></td>
-<td align="left">Reference PLINK bed/bim/fam prefix</td>
+<td><code>-i, --bfile</code></td>
+<td>Reference PLINK bed/bim/fam prefix</td>
+<td><code>data/chr19</code></td>
 </tr>
 <tr>
-<td align="left"><code>-k, --kfile</code></td>
-<td align="left">CSV with sample IDs and KIR calls (e.g., sample KIR3DL1_h1 KIR3DL1_h2)</td>
+<td><code>-k, --kfile</code></td>
+<td>CSV with sample IDs and KIR allele calls</td>
+<td><code>data/kir_calls.csv</code></td>
 </tr>
 <tr>
-<td align="left"><code>-o, --output</code></td>
-<td align="left">Directory to save trained model</td>
+<td><code>-o, --output</code></td>
+<td>Directory to save trained model</td>
+<td><code>models/KIR3DL1</code></td>
 </tr>
 <tr>
-<td align="left"><code>-l, --locus</code></td>
-<td align="left">KIR</td>
+<td><code>-l, --locus</code></td>
+<td>KIR locus to train</td>
+<td><code>KIR3DL1</code></td>
 </tr>
 <tr>
-<td align="left"><code>-a, --assembly</code></td>
-<td align="left">hg19 or hg38</td>
+<td><code>-a, --assembly</code></td>
+<td>Genome build</td>
+<td>
+<code>hg19</code> or <code>hg38</code>
+</td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="optional-flags-1">Optional flags<a class="anchor" aria-label="anchor" href="#optional-flags-1"></a>
-</h3>
+<div class="section level4">
+<h4 id="optional-flags-1">Optional flags<a class="anchor" aria-label="anchor" href="#optional-flags-1"></a>
+</h4>
 <table class="table">
+<colgroup>
+<col width="21%">
+<col width="32%">
+<col width="46%">
+</colgroup>
 <thead><tr>
-<th align="left">Flag</th>
-<th align="left">Default</th>
-<th align="left">Description</th>
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
 </tr></thead>
 <tbody>
 <tr>
-<td align="left"><code>-t, --threads</code></td>
-<td align="left"><code>20</code></td>
-<td align="left">Number of CPU threads</td>
+<td><code>-t, --threads</code></td>
+<td><code>4</code></td>
+<td>Number of CPU threads</td>
 </tr>
 <tr>
-<td align="left"><code>--filter</code></td>
-<td align="left"><code>0.01</code></td>
-<td align="left">KIR genotype quality filter threshold</td>
+<td><code>--nclassifier</code></td>
+<td><code>100</code></td>
+<td>Number of ensemble classifiers</td>
 </tr>
 <tr>
-<td align="left"><code>p, or --position</code></td>
-<td align="left"><em>Optimized KIR region</em></td>
-<td align="left">Optional KIR region</td>
+<td><code>--split</code></td>
+<td><code>0.7</code></td>
+<td>Train/validation split proportion</td>
+</tr>
+<tr>
+<td><code>--kirmaf</code></td>
+<td><code>0.00</code></td>
+<td>Minimum KIR allele frequency filter</td>
+</tr>
+<tr>
+<td><code>--mac</code></td>
+<td><code>3</code></td>
+<td>Minimum allele count for SNPs</td>
+</tr>
+<tr>
+<td><code>-r, --region</code></td>
+<td>Optimized default</td>
+<td>Custom KIR region (e.g. <code>55281035-55295784</code>)</td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
-</h3>
 <div class="section level4">
-<h4 id="id_1">1.<a class="anchor" aria-label="anchor" href="#id_1"></a>
+<h4 id="kir-file-format">KIR file format<a class="anchor" aria-label="anchor" href="#kir-file-format"></a>
 </h4>
-<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> example/chr19 <span class="at">-o</span> output <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19</span></code></pre></div>
+<p>The KIR file (<code>--kfile</code>) must be a CSV with the following structure:</p>
+<pre><code>Sample,KIR3DL1_h1,KIR3DL1_h2
+HG00096,KIR3DL1*001,KIR3DL1*002
+HG00097,KIR3DL1*005,KIR3DL1*015</code></pre>
 </div>
 <div class="section level4">
-<h4 id="id_2-pre-imputation-recommended-for-best-accuracy">2. Pre-imputation (recommended for best accuracy)<a class="anchor" aria-label="anchor" href="#id_2-pre-imputation-recommended-for-best-accuracy"></a>
+<h4 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h4>
-<p>If the initial SNP matching rate in the KIR region is low (e.g., &lt; 50%), PONG2 provides two main strategies to improve accuracy by imputing missing or low-quality SNPs <strong>before</strong> running the core PONG2 prediction step.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="at">-i</span> example/chr19 <span class="at">-k</span> <span class="at">-i</span> example/kir_call.csv</span></code></pre></div>
+<hr>
 </div>
-<div class="section level4">
-<h4 id="note-pre-phasing-the-kir-region-is-required-for-both-local-and-external-pre-imputation-httpsalkesgroupbroadinstituteorgeagle">Note: Pre-phasing the KIR region is required for both local and external pre-imputation (<a href="https://alkesgroup.broadinstitute.org/Eagle/" class="external-link uri">https://alkesgroup.broadinstitute.org/Eagle/</a>)<a class="anchor" aria-label="anchor" href="#note-pre-phasing-the-kir-region-is-required-for-both-local-and-external-pre-imputation-httpsalkesgroupbroadinstituteorgeagle"></a>
-</h4>
-<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>50 <span class="dt">\</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55200000 <span class="dt">\</span></span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span></code></pre></div>
-<ul>
-<li>Option A: Run PONG2 with local pre-imputation using minimac4 (built-in – quick &amp; automated) using flag the <code>--fill-missing</code>
-</li>
-</ul>
-<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co">#Use the `--fill-missing` flag when running `impute`:</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> chr19.phased.vcf <span class="at">-o</span> output <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19 <span class="at">--fill-missing</span> <span class="at">-t</span> 32</span></code></pre></div>
-<ul>
-<li>Option B: External pre-imputation (recommended for highest accuracy)</li>
-</ul>
-<p>pre-impute your chr19 data using a public imputation server before running PONG2. Recommended server: Michigan Imputation Server (<a href="https://imputationserver.sph.umich.edu/" class="external-link uri">https://imputationserver.sph.umich.edu/</a>)</p>
-<ul>
-<li>You may chose to force PONG2 to continue even with low SNP matching rate using the flag <code>-f or --force</code>
-</li>
-</ul>
-<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> example/chr19 <span class="at">-o</span> output <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19 <span class="at">-f</span></span></code></pre></div>
 </div>
-<div class="section level4">
-<h4 id="id_3">3.<a class="anchor" aria-label="anchor" href="#id_3"></a>
-</h4>
-<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="at">-i</span> example/chr19 <span class="at">-k</span> example/kir_calls.csv <span class="at">-o</span> output <span class="at">-l</span> KIR <span class="at">-a</span> hg19 <span class="at">-t</span> 24</span></code></pre></div>
-<p><strong>NOTE:</strong> ### KIR Region SNP Overlap between input data and 1KGP</p>
-<p>Overlap rate is computed between your input data and the 1000 Genomes Project (1KGP) reference panel in the KIR region.</p>
+</div>
+<div class="section level2">
+<h2 id="improving-imputation-accuracy">Improving Imputation Accuracy<a class="anchor" aria-label="anchor" href="#improving-imputation-accuracy"></a>
+</h2>
+<blockquote>
+<p><strong>NOTE:</strong> ### KIR Region SNP Overlap between input data and 1KGP Overlap rate is computed between your input data and the 1000 Genomes Project (1KGP) reference panel in the KIR region (chr19).</p>
 <table class="table">
 <thead><tr>
 <th>Overlap Rate</th>
@@ -407,7 +431,7 @@
 <tr>
 <td>≥ 50%</td>
 <td>✅ Pass</td>
-<td>Proceed with PONG2</td>
+<td>Proceed with PONG2 directly</td>
 </tr>
 <tr>
 <td>&lt; 50%</td>
@@ -416,38 +440,227 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Detailed tutorials &amp; examples</strong> are available in the vignettes:<br><a href="https://normanlabucd.github.io/PONG2/">PONG2 Basics</a> • <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html">Imputation Workflow</a> • <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-training.html">Training Models</a></p>
-</div>
+</blockquote>
+<p>If your SNP matching rate is below 50%, PONG2 provides two strategies:</p>
+<div class="section level3">
+<h3 id="option-a-local-pre-imputation-with-minimac4-built-in">Option A: Local pre-imputation with minimac4 (built-in)<a class="anchor" aria-label="anchor" href="#option-a-local-pre-imputation-with-minimac4-built-in"></a>
+</h3>
+<p>Pre-phase your data with Eagle2, then run PONG2 with <code>--fill-missing</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># Step 1: Pre-phase with Eagle2</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55000000 <span class="dt">\</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co"># Step 2: Run PONG2 with fill-missing</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a>  <span class="at">--vcf</span> chr19.phased.vcf.gz <span class="dt">\</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a>  <span class="at">-o</span> output <span class="dt">\</span></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>  <span class="at">-a</span> hg19 <span class="dt">\</span></span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>  <span class="at">--fill-missing</span> <span class="dt">\</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
+<blockquote>
+<p>⚠️ <strong>Note:</strong> A pre-phased VCF (<code>--vcf</code>) is required with <code>--fill-missing</code>.</p>
+</blockquote>
 </div>
 <div class="section level3">
-<h3 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+<h3 id="option-b-external-pre-imputation-recommended-for-highest-accuracy">Option B: External pre-imputation (recommended for highest accuracy)<a class="anchor" aria-label="anchor" href="#option-b-external-pre-imputation-recommended-for-highest-accuracy"></a>
 </h3>
+<p>Pre-impute your chr19 data using a public imputation server before running PONG2:</p>
+<ul>
+<li><a href="https://imputationserver.sph.umich.edu/" class="external-link">Michigan Imputation Server</a></li>
+<li>
+<a href="https://imputation.biodatacatalyst.nhlbi.nih.gov/" class="external-link">TOPMed Imputation Server</a> (recommended for diverse populations)</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="input--output-formats">Input &amp; Output Formats<a class="anchor" aria-label="anchor" href="#input--output-formats"></a>
+</h2>
+<div class="section level3">
+<h3 id="input">Input<a class="anchor" aria-label="anchor" href="#input"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="22%">
+<col width="29%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>File</th>
+<th>Format</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>PLINK bfile</td>
+<td><code>.bed/.bim/.fam</code></td>
+<td>Genotype data for chr19</td>
+</tr>
+<tr>
+<td>KIR file</td>
+<td><code>.csv</code></td>
+<td>Sample IDs + phased KIR allele calls (train only)</td>
+</tr>
+<tr>
+<td>VCF</td>
+<td>
+<code>.vcf.gz</code> (bgzipped + tabixed)</td>
+<td>Pre-phased VCF (required with <code>--fill-missing</code>)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="31%">
+<col width="68%">
+</colgroup>
+<thead><tr>
+<th>File</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>KIR/&lt;locus&gt;.csv</code></td>
+<td>Predicted KIR alleles per sample</td>
+</tr>
+<tr>
+<td><code>KIR/&lt;locus&gt;.RData</code></td>
+<td>Full prediction object (alleles + probabilities)</td>
+</tr>
+<tr>
+<td><code>&lt;locus&gt;_model.RData</code></td>
+<td>Trained model object (train only)</td>
+</tr>
+<tr>
+<td><code>&lt;locus&gt;_test.RData</code></td>
+<td>Test genotypes (train only, when <code>--split &lt; 1</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="dependencies--external-tools">Dependencies &amp; External Tools<a class="anchor" aria-label="anchor" href="#dependencies--external-tools"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="37%">
+<col width="37%">
+</colgroup>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+<th>Install</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>PLINK2</td>
+<td>Genotype preprocessing</td>
+<td><a href="https://www.cog-genomics.org/plink/2.0/" class="external-link">plink2</a></td>
+</tr>
+<tr>
+<td>Eagle2</td>
+<td>Pre-phasing for imputation</td>
+<td><a href="https://alkesgroup.broadinstitute.org/Eagle/" class="external-link">Eagle</a></td>
+</tr>
+<tr>
+<td>minimac4</td>
+<td>Local SNP imputation</td>
+<td><a href="https://github.com/statgen/Minimac4" class="external-link">minimac4</a></td>
+</tr>
+<tr>
+<td>bgzip/tabix</td>
+<td>VCF compression &amp; indexing</td>
+<td><a href="https://www.htslib.org/" class="external-link">HTSlib</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="28%">
+<col width="52%">
+<col width="20%">
+</colgroup>
+<thead><tr>
+<th>Error</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>--vcf is required with --fill-missing</code></td>
+<td>No VCF provided</td>
+<td>Supply pre-phased VCF with <code>--vcf</code>
+</td>
+</tr>
+<tr>
+<td><code>High missing rate</code></td>
+<td>SNP overlap &lt; 50%</td>
+<td>Run Eagle2 + minimac4, or use <code>--force</code>
+</td>
+</tr>
+<tr>
+<td><code>No model found for locus</code></td>
+<td>Unsupported locus or wrong filter</td>
+<td>Check locus name and <code>--filter</code> value</td>
+</tr>
+<tr>
+<td><code>incorrect number of dimensions</code></td>
+<td>Too few training samples</td>
+<td>Verify sample overlap between KIR and PLINK files</td>
+</tr>
+<tr>
+<td><code>plink2 not found</code></td>
+<td>Not in PATH</td>
+<td>Add plink2 to PATH</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
 <p>PONG2 is licensed under the <strong>GNU General Public License v3.0</strong> (GPL-3.0).</p>
-<p>Full license text: <a href="LICENSE">LICENSE</a> (included in the repository root)</p>
-<p>You are free to use, modify, and distribute PONG2, provided that:</p>
+<p>You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See <a href="LICENSE">LICENSE</a> or the <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" class="external-link">GNU GPL-3.0 page</a> for details.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
+</h2>
+<p>If you use PONG2 in your research, please cite:</p>
+<blockquote>
+<p>Sadeeq SA, Leaton LA, Kichula KM, Farias TDJ, Font-Porterias N, Pollock NR, the Colorado Center for Personalized Medicine, Collora CE, Castelli EC, Gignoux CR, Norman PJ. <strong>PONG 2.0: Allele Imputation for the Killer Cell Immunoglobulin-Like Receptors.</strong> <em>Manuscript in preparation</em>, 2026.</p>
+</blockquote>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="contact--support">Contact &amp; Support<a class="anchor" aria-label="anchor" href="#contact--support"></a>
+</h2>
 <ul>
-<li>You distribute any derivative work under the same GPL-3.0 license</li>
-<li>You include the original copyright notice and license text</li>
+<li><p><strong>GitHub Issues</strong> (preferred for bug reports, feature requests, questions): <a href="https://github.com/NormanLabUCD/PONG2/issues" class="external-link">https://github.com/NormanLabUCD/PONG2/issues</a></p></li>
+<li><p><strong>Email</strong> (for collaboration or private inquiries): <a href="mailto:paul.norman@cuanschutz.edu" class="email">paul.norman@cuanschutz.edu</a></p></li>
+<li><p><strong>Lab / Institution:</strong> <a href="https://medschool.cuanschutz.edu/dbmi/lab-pages/norman-lab" class="external-link">Norman Lab</a> | <a href="https://www.cuanschutz.edu/" class="external-link">University of Colorado Anschutz Medical Campus</a> | <a href="https://news.cuanschutz.edu/dbmi" class="external-link">Department of Biomedical Informatics</a> | <a href="https://medschool.cuanschutz.edu/basic-sciences/departments/immunology-and-microbiology" class="external-link">Immunology &amp; Microbiology</a></p></li>
 </ul>
-<p>See the <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" class="external-link">GNU GPL-3.0 page</a> for details.</p>
-</div>
-<div class="section level3">
-<h3 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a>
-</h3>
-<div class="sourceCode" id="cb16"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>Suraju A Sadeeq, Laura Ann Leaton, Katherine M Kichula, Neus Font-Porterias, Nicholas R Pollock,</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>the Colorado Center for Personalized Medicine, Christopher E Collora, Erick C. Castelli, Christopher R Gignoux, Paul J Norman</span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="contact--support">Contact &amp; Support<a class="anchor" aria-label="anchor" href="#contact--support"></a>
-</h3>
-<ul>
-<li><p><strong>GitHub Issues</strong> (preferred for bug reports, feature requests, questions):<br><a href="https://github.com/NormanLabUCD/PONG2/issues" class="external-link">https://github.com/NormanLabUCD/PONG2/issues</a></p></li>
-<li><p><strong>Email</strong> (for collaboration, private inquiries, or urgent support):<br><a href="mailto:paul.norman@cuanschutz.edu" class="email">paul.norman@cuanschutz.edu</a></p></li>
-<li><p><strong>Lab / Institution</strong>:<br><a href="https://medschool.cuanschutz.edu/dbmi/lab-pages/norman-lab" class="external-link">Norman Lab</a><br><a href="https://www.cuanschutz.edu/" class="external-link">University of Colorado Anschutz Medical Campus</a><br><a href="https://news.cuanschutz.edu/dbmi" class="external-link">Department of Biomedical Informatics</a>, <a href="https://medschool.cuanschutz.edu/basic-sciences/departments/immunology-and-microbiology" class="external-link">Immunology &amp; Microbiology</a></p></li>
-</ul>
-<p>We aim to respond to issues and emails within 1–3 business days.<br>
-Thank you for using PONG2 — happy KIR analysis! 🧬</p>
-</div>
+<p>We aim to respond to issues and emails within 1–3 business days. Thank you for using PONG2 — happy KIR analysis! 🧬</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

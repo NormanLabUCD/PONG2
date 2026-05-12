@@ -1,406 +1,578 @@
 #!/usr/bin/env bash
-# PONG2 CLI - Production-Ready Version
-set -euo pipefail  # Strict mode: exit on error, unset variables, and pipeline failures
+# =============================================================================
+# PONG2 CLI - Production-Ready Pipeline
+# Version: 1.0.0
+# Usage: pong2 <command> [options]
+# Commands: train | impute
+# =============================================================================
+set -euo pipefail
 
-# ========================
-# Installation Instruction
-# install.packages("programs/PONG2_1.0.0.tar", repos = NULL, type = "source")
-# R CMD INSTALL --library=/pl/active/gignouxlab/suraj/programs programs/PONG2_1.0.0.tar
-# R CMD INSTALL  programs/PONG2_1.0.0.tar.gz
-#R CMD INSTALL --preclean --with-keep.source --no-multiarch .
-# ========================
-
-# ========================
+# =============================================================================
 # GLOBAL CONFIGURATION
-# ========================
+# =============================================================================
 readonly VERSION="1.0.0"
-readonly DEFAULT_INPUT="data/input.csv"
-readonly DEFAULT_OUTPUT="results/"
-readonly R_REPO="https://cloud.r-project.org"
 
-# --------------------------
-# Color Definitions
-# --------------------------
+# ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m'
 
-# --------------------------
-# Functions
-# --------------------------
-die() {
-  echo -e "${RED}ERROR: $*${NC}" >&2
-  exit 1
-}
+# ── Logging ───────────────────────────────────────────────────────────────────
+log_info()    { echo -e "${GREEN}[INFO]${NC}  $*"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+log_step()    { echo -e "\n${BOLD}${BLUE}▶ $*${NC}"; }
+die()         { log_error "$*"; exit 1; }
+timestamp()   { date '+%Y-%m-%d %H:%M:%S'; }
 
-# Locate Rscript with validation
-RSCRIPT="$(command -v Rscript || { echo "ERROR: Rscript not found in PATH" >&2; exit 1; })"
-BIN_DIR="$HOME/bin"
-PONG2_root=$(Rscript -e 'cat(system.file(package="PONG2"))' 2>/dev/null)
+# ── Validate required tools ───────────────────────────────────────────────────
+RSCRIPT="$(command -v Rscript)" || die "Rscript not found in PATH"
+PONG2_root="$(Rscript -e 'cat(system.file(package="PONG2"))' 2>/dev/null)" \
+  || die "PONG2 R package not installed"
 
-# Default variables
+# =============================================================================
+# DEFAULT PARAMETERS
+# =============================================================================
+COMMAND=""
+VCF_FILE=""         # Pre-phased VCF for minimac4 pre-imputation
+BIM_FILE=""
+KIR_FILE=""
+OUTPUT_DIR=""
+LOCUS=""
+ASSEMBLY="hg19"
 NCLASSIFIER="Null"
-LOCUS_REGION="Null"
+THREADS=4
 KIRSPLIT="Null"
 KIRMAF="Null"
 MAC="Null"
-THREADS=4
 FILTER=0.005
+LOCUS_REGION="Null"
 FORCE="false"
 FILL_MISSING="false"
 
-# declare -A pos=(
-#     ["hg19"]="55000000 55400000 19"
-#     ["hg38"]="54000000 55000000 chr19"
-# )
-
+# =============================================================================
+# KIR REGION POSITIONS
+# =============================================================================
 pos() {
-    case "$1" in
-        hg19) echo "55000000 55400000 19" ;;
-        hg38) echo "54000000 55000000 chr19" ;;
-        *)    echo "Unknown assembly: $1" >&2; exit 1 ;;
-    esac
+  case "$1" in
+    hg19) echo "55000000 55400000 19" ;;
+    hg38) echo "54000000 55000000 chr19" ;;
+    *)    die "Unknown assembly: $1. Use hg19 or hg38" ;;
+  esac
 }
 
-#Development mode
-#R CMD INSTALL --preclean --with-keep.source --no-multiarch .
-#packageVersion("PONG2")  # Should show dev version (e.g., 0.99.0.9000)
-#dev_mode=/home/suraju/projects/PONG22/inst/scripts
-command=""
-
-# ==================
-# CORE FUNCTIONS
-# ==================
-
-function load_package() {
-    error_msg="$("$RSCRIPT" -e "
-    if (!require('PONG2', quietly=TRUE)) {
-            stop('PONG2 package not found')
-    }")"
-
-
-[[ -n "$error_msg" ]] && { echo "ERROR: $error_msg" >&2; exit 1; }
+# =============================================================================
+# HELP
+# =============================================================================
+show_help() {
+  local topic="${1:-}"
+  local help_script
+  help_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'help.sh', package='PONG2'))")"
+  bash "$help_script" "$topic"
 }
 
-function train_model() {
+show_version() {
+  echo "PONG2 version $VERSION"
+  "$RSCRIPT" -e "cat('R package version:', as.character(packageVersion('PONG2')), '\n')"
+}
 
-  #. Check Plink2 availability
-  "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
-  TRAIN_KIR_MODEL=$($RSCRIPT  -e "cat(system.file('scripts', 'train.R', package='PONG2'))")
+# =============================================================================
+# VALIDATION HELPERS
+# =============================================================================
+check_file() {
+  local file="$1" label="$2"
+  [[ -f "$file" ]] || die "$label not found: $file"
+}
 
-  mkdir -p "$OUTPUT_DIR/tmp"
-  #read start end chr <<< "${pos["$ASSEMBLY"]}"
-  read start end chr <<< "$(pos "$ASSEMBLY")"
+check_plink_bfile() {
+  local bfile="$1"
+  check_file "${bfile}.bed" "PLINK .bed"
+  check_file "${bfile}.bim" "PLINK .bim"
+  check_file "${bfile}.fam" "PLINK .fam"
+}
 
-  # awk -F',' '{print $1, $1}' $KIR_FILE > $OUTPUT_DIR/tmp/kir_sample.txt
-  # plink2 --bfile $BIM_FILE --keep $OUTPUT_DIR/tmp/kir_sample.txt --silent --make-bed --out $OUTPUT_DIR/tmp/temp
-  # #./plink --bfile $out/temp  --list-duplicate-vars --out $out/plink
-  # awk '{print $2}' $OUTPUT_DIR/tmp/temp.bim | sort | uniq -d > $OUTPUT_DIR/tmp/snp_duplicate.txt
-  # plink2 --bfile $OUTPUT_DIR/tmp/temp --exclude $OUTPUT_DIR/tmp/snp_duplicate.txt --silent --make-bed --out $OUTPUT_DIR/tmp/chr19
+check_plink2() {
+  plink2 --version 2>/dev/null | grep -q "2.0" \
+    || die "plink2 v2.0+ required but not found"
+}
 
-  # Step 1: Create sample keep file (skip header, remove quotes)
+# =============================================================================
+# SHARED: PLINK PREPROCESSING
+# =============================================================================
+preprocess_plink() {
+  local bfile="$1" outdir="$2" kir_file="$3"
+
+  log_step "Preprocessing PLINK files"
+
+  # Step 1: Sample keep file from KIR CSV (skip header, strip quotes)
+  log_info "Creating sample keep file..."
   awk -F',' 'NR>1 {gsub(/"/, "", $1); print $1, $1}' \
-    $KIR_FILE > $OUTPUT_DIR/tmp/kir_sample.txt
+    "$kir_file" > "$outdir/tmp/kir_sample.txt"
 
-  # Step 2: Subset plink file
+  local n_kir
+  n_kir=$(wc -l < "$outdir/tmp/kir_sample.txt")
+  log_info "KIR samples: $n_kir"
+
+  # Step 2: Subset to KIR samples
+  log_info "Subsetting PLINK to KIR samples..."
   plink2 \
-    --bfile $BIM_FILE \
-    --keep $OUTPUT_DIR/tmp/kir_sample.txt \
+    --bfile "$bfile" \
+    --keep "$outdir/tmp/kir_sample.txt" \
     --silent \
     --make-bed \
-    --out $OUTPUT_DIR/tmp/temp
+    --out "$outdir/tmp/temp"
+
+  local n_retained
+  n_retained=$(wc -l < "$outdir/tmp/temp.fam")
+  log_info "Samples retained: $n_retained / $n_kir"
+
+  if [[ "$n_retained" -lt 10 ]]; then
+    log_warn "KIR sample ID example:  $(head -1 "$outdir/tmp/kir_sample.txt")"
+    log_warn "FAM sample ID example:  $(awk '{print $1, $2}' "$outdir/tmp/temp.fam" | head -1)"
+    die "Too few samples retained ($n_retained). Check sample ID format."
+  fi
 
   # Step 3: Remove duplicate SNPs
-  awk '{print $2}' $OUTPUT_DIR/tmp/temp.bim | \
-    sort | uniq -d > $OUTPUT_DIR/tmp/snp_duplicate.txt
+  log_info "Removing duplicate SNPs..."
+  awk '{print $2}' "$outdir/tmp/temp.bim" | \
+    sort | uniq -d > "$outdir/tmp/snp_duplicate.txt"
+
+  local n_dups
+  n_dups=$(wc -l < "$outdir/tmp/snp_duplicate.txt")
+  log_info "Duplicate SNPs removed: $n_dups"
 
   # Step 4: Exclude duplicates
   plink2 \
-    --bfile $OUTPUT_DIR/tmp/temp \
-    --exclude $OUTPUT_DIR/tmp/snp_duplicate.txt \
+    --bfile "$outdir/tmp/temp" \
+    --exclude "$outdir/tmp/snp_duplicate.txt" \
     --silent \
     --make-bed \
-    --out $OUTPUT_DIR/tmp/chr19
+    --out "$outdir/tmp/chr19"
 
-  #Run PONG with preprocessed data
-  Rscript $TRAIN_KIR_MODEL $OUTPUT_DIR/tmp/chr19 $KIR_FILE $LOCUS $ASSEMBLY $OUTPUT_DIR $NCLASSIFIER $THREADS $KIRSPLIT $KIRMAF $MAC $LOCUS_REGION;
-
+  local n_variants
+  n_variants=$(wc -l < "$outdir/tmp/chr19.bim")
+  log_info "Final variants: $n_variants"
 }
 
-function imputation() {
-   #echo $(load_package)
-    #Rscript -e 'PONG2::kirPredict'
-    #echo -e "${GREEN}Starting imputation...${NC}"
-    mkdir -p "$OUTPUT_DIR/tmp"
-    #read start end chr <<< "${pos["$ASSEMBLY"]}"
-    read start end chr <<< "$(pos "$ASSEMBLY")"
+# =============================================================================
+# COMMAND: TRAIN
+# =============================================================================
+train_model() {
+  log_step "PONG2 Training Pipeline"
 
-    #source "$PONG2_root/scripts/input_validation.sh"
+  # ── Validate inputs ──────────────────────────────────────────────────────
+  [[ -n "$BIM_FILE"   ]] || die "--bfile required"
+  [[ -n "$KIR_FILE"   ]] || die "--kfile required"
+  [[ -n "$OUTPUT_DIR" ]] || die "--output required"
+  [[ -n "$LOCUS"      ]] || die "--locus required"
+  [[ -n "$ASSEMBLY"   ]] || die "--assembly required (hg19/hg38)"
 
-    filename=$(basename "$INPUT_FILE")
+  check_plink_bfile "$BIM_FILE"
+  check_file "$KIR_FILE" "KIR file"
+  check_plink2
 
-    PREDICT_KIR=$($RSCRIPT  -e "cat(system.file('scripts', 'predict.R', package='PONG2'))")
+  # ── Verify PONG2 train script ────────────────────────────────────────────
+  local train_script
+  train_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'train.R', package='PONG2'))")"
+  [[ -f "$train_script" ]] || die "train.R not found in PONG2 package"
 
-     #. Check Plink2 availability
-    "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
+  # ── Check dependency ─────────────────────────────────────────────────────
+  "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
 
-    if [ "$ASSEMBLY" == "hg38" ]; then
-      plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$INPUT_FILE" --chr "$chr"  --from-bp "$start" --to-bp "$end" --make-bed --out "$OUTPUT_DIR/tmp/$filename" --silent  && sed -i 's/^/chr/' "$OUTPUT_DIR/tmp/$filename.bim"
-    else
-      plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$INPUT_FILE" --chr "$chr"  --from-bp "$start" --to-bp "$end" --make-bed --out "$OUTPUT_DIR/tmp/$filename" --silent
+  # ── Setup directories ────────────────────────────────────────────────────
+  mkdir -p "$OUTPUT_DIR/tmp"
+
+  # ── Preprocess PLINK ─────────────────────────────────────────────────────
+  preprocess_plink "$BIM_FILE" "$OUTPUT_DIR" "$KIR_FILE"
+
+  # ── Print training summary ───────────────────────────────────────────────
+  cat <<EOF
+
+$(echo -e "${BOLD}--- Training Summary ---${NC}")
+  Locus:         $LOCUS
+  Assembly:      $ASSEMBLY
+  N Classifiers: $NCLASSIFIER
+  Threads:       $THREADS
+  KIR Split:     $KIRSPLIT
+  KIR MAF:       $KIRMAF
+  MAC:           $MAC
+  Locus Region:  $LOCUS_REGION
+------------------------
+EOF
+
+  # ── Run R training script ─────────────────────────────────────────────────
+  log_step "Training KIR model: $LOCUS"
+  "$RSCRIPT" --vanilla "$train_script" \
+    "$OUTPUT_DIR/tmp/chr19" \
+    "$KIR_FILE" \
+    "$LOCUS" \
+    "$ASSEMBLY" \
+    "$OUTPUT_DIR" \
+    "$NCLASSIFIER" \
+    "$THREADS" \
+    "$KIRSPLIT" \
+    "$KIRMAF" \
+    "$MAC" \
+    "$LOCUS_REGION"
+
+  # ── Cleanup ───────────────────────────────────────────────────────────────
+  log_step "Cleaning up temporary files..."
+  rm -rf "$OUTPUT_DIR/tmp"
+
+  log_info "Training complete. Model saved to: $OUTPUT_DIR/${LOCUS}_model.RData"
+}
+
+# =============================================================================
+# COMMAND: IMPUTE
+# =============================================================================
+imputation() {
+  log_step "PONG2 Imputation Pipeline"
+
+  # ── Validate inputs ──────────────────────────────────────────────────────
+  [[ -n "$OUTPUT_DIR" ]] || die "--output required"
+  [[ -n "$LOCUS"      ]] || die "--locus required"
+  [[ -n "$ASSEMBLY"   ]] || die "--assembly required (hg19/hg38)"
+  check_plink2
+
+  # ── Route: fill-missing uses VCF only; normal imputation uses PLINK ───────
+  if [[ "$FILL_MISSING" == "true" ]]; then
+    # --vcf is the sole input — PLINK cannot hold phased haplotype data
+    [[ -n "$VCF_FILE" ]] || die \
+      "--vcf is required with --fill-missing.\n" \
+      "  PLINK files cannot hold phased haplotype data required by minimac4.\n" \
+      "  Please supply a pre-phased VCF (e.g. from Eagle2):\n" \
+      "    pong2 impute --vcf phased.vcf.gz --fill-missing ..."
+    check_file "$VCF_FILE" "Pre-phased VCF"
+  else
+    # Normal imputation — PLINK bfile required
+    [[ -n "$BIM_FILE" ]] || die "--bfile required"
+    check_plink_bfile "$BIM_FILE"
+  fi
+
+  # ── Check dependency ─────────────────────────────────────────────────────
+  "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
+
+  # ── Locate scripts ───────────────────────────────────────────────────────
+  local predict_script missingness_script
+  predict_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'predict.R', package='PONG2'))")"
+  missingness_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'snpmissingness.R', package='PONG2'))")"
+
+  [[ -f "$predict_script"     ]] || die "predict.R not found in PONG2 package"
+  [[ -f "$missingness_script" ]] || die "snpmissingness.R not found in PONG2 package"
+
+  # ── Setup ────────────────────────────────────────────────────────────────
+  mkdir -p "$OUTPUT_DIR/tmp"
+  read -r start end chr <<< "$(pos "$ASSEMBLY")"
+
+  # ── Extract KIR region ───────────────────────────────────────────────────
+  local filename
+
+  if [[ "$FILL_MISSING" == "true" ]]; then
+    # ── Derive PLINK from VCF — no need for separate -i input ──────────────
+    filename=$(basename "${VCF_FILE%.vcf.gz}")
+    log_step "Extracting KIR region from VCF: ${chr}:${start}-${end}"
+
+    # Ensure VCF is bgzipped and indexed
+    local input_vcf="$VCF_FILE"
+    if [[ "$VCF_FILE" != *.gz ]]; then
+      log_info "Compressing VCF with bgzip..."
+      bgzip -c "$VCF_FILE" > "$OUTPUT_DIR/tmp/$filename.vcf.gz"
+      input_vcf="$OUTPUT_DIR/tmp/$filename.vcf.gz"
+    fi
+    [[ -f "${input_vcf}.tbi" ]] || tabix -f "$input_vcf"
+
+    # Fix chr prefix if needed
+    local vcf_chr
+    vcf_chr=$(zcat "$input_vcf" | grep -v "^#" | head -1 | awk '{print $1}')
+    if [[ "$ASSEMBLY" == "hg38" && "$vcf_chr" != chr* ]]; then
+      log_warn "Fixing missing chr prefix for hg38..."
+      zcat "$input_vcf" | \
+        awk 'BEGIN{OFS="\t"} /^#/{print; next} {$1="chr"$1; print}' | \
+        bgzip > "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+      tabix -f "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+      input_vcf="$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+    elif [[ "$ASSEMBLY" == "hg19" && "$vcf_chr" == chr* ]]; then
+      log_warn "Removing chr prefix for hg19..."
+      zcat "$input_vcf" | \
+        awk 'BEGIN{OFS="\t"} /^#/{print; next} {sub(/^chr/,"",$1); print}' | \
+        bgzip > "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+      tabix -f "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+      input_vcf="$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
     fi
 
-    #1. check SNP missingness against the model
-    echo "Matching input SNP postions and  with the KIR locus"
-     MISSINGNESS=$($RSCRIPT  -e "cat(system.file('scripts', 'snpmissingness.R', package='PONG2'))")
+    # Convert VCF → PLINK for missingness check
+    log_info "Converting VCF to PLINK for SNP matching check..."
+    plink2 \
+      --vcf "$input_vcf" \
+      --chr "$chr" \
+      --from-bp "$start" \
+      --to-bp "$end" \
+      --make-bed \
+      --out "$OUTPUT_DIR/tmp/$filename" \
+      --silent
 
-     matching=$($RSCRIPT --vanilla "$MISSINGNESS" \
+  else
+    # ── Normal imputation — extract KIR region from PLINK ──────────────────
+    filename=$(basename "$BIM_FILE")
+    log_step "Extracting KIR region from PLINK: ${chr}:${start}-${end}"
+
+    plink2 \
+      --bfile "$BIM_FILE" \
+      --chr "$chr" \
+      --from-bp "$start" \
+      --to-bp "$end" \
+      --make-bed \
+      --out "$OUTPUT_DIR/tmp/$filename" \
+      --silent
+
+    if [[ "$ASSEMBLY" == "hg38" ]]; then
+      sed -i 's/^/chr/' "$OUTPUT_DIR/tmp/$filename.bim"
+    fi
+  fi
+
+  # ── SNP missingness check ─────────────────────────────────────────────────
+  log_step "Checking SNP overlap with KIR model..."
+
+  local matching
+  matching=$("$RSCRIPT" --vanilla "$missingness_script" \
     "$OUTPUT_DIR/tmp/$filename" \
-    "$OUTPUT_DIR"\
-    "$ASSEMBLY"\
-    "$LOCUS"\
-    "$FILTER"\
+    "$OUTPUT_DIR" \
+    "$ASSEMBLY" \
+    "$LOCUS" \
+    "$FILTER" \
     "$PONG2_root")
 
-    matching_pct=$(awk "BEGIN {printf \"%.0f\", $matching * 100}")
-    #echo $matching
-    # Note that you cannot use --force fill-missing together
-    if awk -v m="$matching" 'BEGIN { exit (m < 0.6) ? 0 : 1 }'; then
-       echo -e "More than 50% of the SNPs are missing. ${RED}Error: High missing rate${NC}"
+  local matching_pct
+  matching_pct=$(awk "BEGIN {printf \"%.2f\", $matching * 100}")
+  log_info "SNP match rate: ${matching_pct}%"
 
-        if [ "$FILL_MISSING" == "true" ]; then
-           echo "IMPUTE SNPs..."
-           # Check minimac and genomic reference build availability
-           "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "minimac4"
+  # ── Route based on match rate ─────────────────────────────────────────────
+  if awk -v m="$matching" 'BEGIN { exit (m < 0.6) ? 0 : 1 }'; then
 
-            # Plink to vcf
-           if [ "$ASSEMBLY" == "hg38" ]; then
-              [ -f "$OUTPUT_DIR/tmp/$filename.vcf.gz" ] || plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$OUTPUT_DIR/tmp/$filename" --export vcf bgz  --out "$OUTPUT_DIR/tmp/$filename" --silent
-              zcat "$OUTPUT_DIR/tmp/$filename.vcf.gz" | sed 's/^19/chr19/' | bgzip > "$OUTPUT_DIR/tmp/$filename.tmp.vcf.gz"
-              mv "$OUTPUT_DIR/tmp/$filename.tmp.vcf.gz" "$OUTPUT_DIR/tmp/$filename.vcf.gz"
-              tabix -f "$OUTPUT_DIR/tmp/$filename.vcf.gz"
-             else
-              [ -f "$OUTPUT_DIR/tmp/$filename.vcf.gz" ] || plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$OUTPUT_DIR/tmp/$filename" --export vcf bgz  --out "$OUTPUT_DIR/tmp/$filename" --silent
-                tabix -f "$OUTPUT_DIR/tmp/$filename.vcf.gz"
-            fi
+    log_warn "Match rate ${matching_pct}% is below 50% threshold"
 
-            # Imputation
-           [ -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ] ||
-           [ -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ] || mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz"
-           plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --vcf "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" dosage=DS --import-dosage-certainty 0.8 --make-pgen --out "$OUTPUT_DIR/tmp/imputed.$filename" --silent
-           plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --pfile "$OUTPUT_DIR/tmp/imputed.$filename" --make-bed --out "$OUTPUT_DIR/tmp/imputed.$filename" --silent
-            "kir_imputation" "$OUTPUT_DIR/tmp/imputed.$filename"
-           exit 0
-        fi
+    if [[ "$FILL_MISSING" == "true" ]]; then
+      log_step "Pre-imputing missing SNPs with minimac4..."
+      "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "minimac4"
+      _run_minimac4_from_vcf "$input_vcf" "$filename"
+      kir_imputation "$OUTPUT_DIR/tmp/imputed.$filename"
 
-        if [ "$FORCE" == "true" ]; then
-          "kir_imputation"  "$OUTPUT_DIR/tmp/$filename"
-        else
-           printf "%bMatch percentage: %.2f%%%b\nadd the flag '--force or -f' to continue anyway or the flag 'fill-missing' to impute the missing SNPs with minimac4'  " "$GREEN" "$(echo "$matching_pct")"
-           exit 1
-        fi
+    elif [[ "$FORCE" == "true" ]]; then
+      log_warn "Proceeding despite low match rate (--force enabled)"
+      kir_imputation "$OUTPUT_DIR/tmp/$filename"
+
     else
-       printf "%bMatch percentage: %.2f%%%b\n" "$GREEN" "$(echo "$matching_pct" )" "${NC}"
-
-       "kir_imputation"  "$OUTPUT_DIR/tmp/$filename"
+      log_error "Match rate too low: ${matching_pct}%"
+      echo -e "Options:"
+      echo -e "  ${YELLOW}--fill-missing${NC}  Impute missing SNPs with minimac4"
+      echo -e "  ${YELLOW}--force${NC}         Proceed anyway (not recommended)"
+      exit 1
     fi
 
+  else
+    log_info "Match rate sufficient: ${matching_pct}% — proceeding with imputation"
+    kir_imputation "$OUTPUT_DIR/tmp/$filename"
+  fi
 }
 
-function kir_imputation(){
-  local plink_file="$1"
-  awk '{print $1, $1":"$4, $3, $4, $5, $6}' "$plink_file.bim" > "$plink_file.mod.bim"
-  awk '{print $2}' "$plink_file.mod.bim" | sort | uniq -d > "$plink_file.snp_dup.txt"
-  mv "$plink_file.mod.bim" "$plink_file.bim"
+# =============================================================================
+# HELPER: MINIMAC4 PRE-IMPUTATION (from pre-phased VCF)
+# =============================================================================
+_run_minimac4_from_vcf() {
+  local input_vcf="$1"
+  local filename="$2"
 
-  plink2 --version 2>/dev/null | grep -q "2.0" && plink2 --bfile "$plink_file" --exclude "$plink_file.snp_dup.txt" --make-bed --out "$plink_file.nodup" --silent
-   cp "$plink_file.nodup."* "$OUTPUT_DIR"
-   $RSCRIPT --vanilla "$PREDICT_KIR" "$plink_file.nodup" "$OUTPUT_DIR" "$LOCUS" "$ASSEMBLY" "$FILTER" "$THREADS"
-   rm -r "$OUTPUT_DIR/tmp/"
+  log_info "Running minimac4 on pre-phased VCF: $input_vcf"
+
+  # Run minimac4
+  _minimac4_impute "$input_vcf" "$filename"
+
+  # Convert imputed VCF to PLINK
+  _imputed_vcf_to_plink "$filename"
 }
 
+# =============================================================================
+# HELPER: SHARED MINIMAC4 EXECUTION
+# =============================================================================
+_minimac4_impute() {
+  local input_vcf="$1"
+  local filename="$2"
+
+  if [[ ! -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ]]; then
+    log_info "Running minimac4 imputation..."
+    run_minimac4_416 \
+      "$PONG2_root/extdata/$ASSEMBLY/"*.msav \
+      "$input_vcf" \
+      --region "${chr}:${start}-${end}" \
+      -o "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
+      -c 1000000 \
+      -t "$THREADS" \
+      -e "$OUTPUT_DIR/tmp/empirical.imputed_$filename.vcf.gz" \
+      --format DS
+
+    mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
+       "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz"
+    log_info "Minimac4 imputation complete"
+  else
+    log_info "Imputed VCF already exists — skipping minimac4"
+  fi
+}
+
+# =============================================================================
+# HELPER: CONVERT IMPUTED VCF TO PLINK
+# =============================================================================
+_imputed_vcf_to_plink() {
+  local filename="$1"
+
+  log_info "Converting imputed VCF to PLINK format..."
+  plink2 \
+    --vcf "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" dosage=DS \
+    --import-dosage-certainty 0.8 \
+    --make-pgen \
+    --out "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --silent
+
+  plink2 \
+    --pfile "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --make-bed \
+    --out "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --silent
+
+  log_info "PLINK conversion complete"
+}
+
+# =============================================================================
+# HELPER: MINIMAC4 VERSION CHECK
+# =============================================================================
 run_minimac4_416() {
-    local paths=($(which -a minimac4) "$HOME/bin/minimac4" "/usr/local/bin/minimac4")
+  local paths=()
+  while IFS= read -r p; do paths+=("$p"); done < <(which -a minimac4 2>/dev/null || true)
+  paths+=("$HOME/bin/minimac4" "/usr/local/bin/minimac4")
 
-    for path in "${paths[@]}"; do
-        if [ -n "$path" ] && [ -x "$path" ] && $path --version 2>/dev/null | grep -q "4.1.6"; then
-            echo "Running minimac4 from: $path"
-            $path "$@"
-            return $?
-        fi
-    done
-
-    echo "Error: minimac4 4.1.6 not found" >&2
-    return 1
+  for path in "${paths[@]}"; do
+    if [[ -x "$path" ]] && "$path" --version 2>/dev/null | grep -q "4.1.6"; then
+      log_info "Using minimac4: $path"
+      "$path" "$@"
+      return $?
+    fi
+  done
+  die "minimac4 v4.1.6 not found"
 }
 
-function show_help() {
-  local topic="${1:-}"   # empty = general help
-  local help_script="$($RSCRIPT -e "cat(system.file('scripts', 'help.sh', package='PONG2'))")"
-  bash "$help_script" "$topic"
+# =============================================================================
+# HELPER: KIR PREDICTION
+# =============================================================================
+kir_imputation() {
+  local plink_file="$1"
 
+  log_step "Running KIR prediction: $LOCUS"
+
+  # Standardize SNP IDs to chr:pos format
+  awk '{print $1, $1":"$4, $3, $4, $5, $6}' \
+    "${plink_file}.bim" > "${plink_file}.mod.bim"
+
+  # Find and remove duplicate SNP IDs
+  awk '{print $2}' "${plink_file}.mod.bim" | \
+    sort | uniq -d > "${plink_file}.snp_dup.txt"
+
+  mv "${plink_file}.mod.bim" "${plink_file}.bim"
+
+  plink2 \
+    --bfile "$plink_file" \
+    --exclude "${plink_file}.snp_dup.txt" \
+    --make-bed \
+    --out "${plink_file}.nodup" \
+    --silent
+
+  # Copy final plink files to output
+  cp "${plink_file}.nodup."* "$OUTPUT_DIR/"
+
+  # Run R prediction
+  "$RSCRIPT" --vanilla "$predict_script" \
+    "${plink_file}.nodup" \
+    "$OUTPUT_DIR" \
+    "$LOCUS" \
+    "$ASSEMBLY" \
+    "$FILTER" \
+    "$THREADS"
+
+  # Cleanup
+  log_step "Cleaning up temporary files..."
+  rm -rf "$OUTPUT_DIR/tmp/"
+
+  log_info "Imputation complete. Results saved to: $OUTPUT_DIR"
 }
 
-# ==================
-# COMMAND PROCESSING
-# ==================
-# -----------------------------------
-# STEP 1: Find the command (non-flag argument)
-# -----------------------------------
-args=("$@")  # Save original arguments
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --)  # End of options marker
-            shift
-            break
-            ;;
-        -*)  # Skip any flags during command detection
-            shift
-            ;;
-        *)
-            command="$1"
-            shift
-            break  # Command found, exit loop
-            ;;
-    esac
+# =============================================================================
+# ARGUMENT PARSING
+# =============================================================================
+# Step 1: Detect command (first non-flag argument)
+args=("$@")
+for arg in "${args[@]}"; do
+  case "$arg" in
+    -*) continue ;;
+    *)  COMMAND="$arg"; break ;;
+  esac
 done
 
-# -----------------------------------
-# STEP 2: Parse ALL arguments (including those before/after command)
-# -----------------------------------
-# Reset arguments for full parsing
+# Step 2: Parse all arguments
 if (( ${#args[@]} > 0 )); then
-    set -- "${args[@]}"
+  set -- "${args[@]}"
 fi
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -i|--input)
-            INPUT_FILE="$2"
-            shift 2
-            ;;
-        -i|--bfile)
-            BIM_FILE="$2"
-            shift 2
-            ;;
-        -k|--kfile)
-            KIR_FILE="$2"
-            shift 2
-            ;;
-        -o|--output)
-            OUTPUT_DIR="$2"
-            shift 2
-            ;;
-        -l|--locus)
-            LOCUS="$2"
-            shift 2
-            ;;
-        -a|--assembly)
-            ASSEMBLY="$2"
-            shift 2
-            ;;
-        --filter)
-            FILTER="$2"
-            shift 2
-            ;;
-        --split)
-            KIRSPLIT="$2"
-            shift 2
-            ;;
-         -r|--region)
-            LOCUS_REGION="$2"
-            shift 2
-            ;;
-        --nclassifier)
-            NCLASSIFIER="$2"
-            shift 2
-            ;;
-        --kirmaf)
-            KIRMAF="$2"
-            shift 2
-            ;;
-        --mac)
-            MAC="$2"
-            shift 2
-            ;;
-        -t|--threads)
-            THREADS="$2"
-            shift 2
-            ;;
-        -f|--force)
-            FORCE="true"
-            shift 1
-            ;;
-        --fill-missing)
-            FILL_MISSING="true"
-            shift 1
-            ;;
-        --region)
-            REGION="true"
-            shift 1
-            ;;
-         -h|--help)
-            shift
-            topic="${1:-}"          # if no second arg, topic is empty
-            show_help "$topic"
-            exit 0
-           ;;
-        --)  # End of options
-            shift
-            break
-            ;;
-        -*)  # Unknown flags
-            echo "Error: Unknown option $1" >&2
-            exit 1
-            ;;
-        *)   # Non-flag arguments (including our command)
-            if [[ "$1" != "$command" ]]; then
-                echo "Error: Unexpected argument $1" >&2
-                exit 1
-            fi
-            shift
-            ;;
-    esac
+  case "$1" in
+    -i|--bfile)        BIM_FILE="$2";      shift 2 ;;
+    --vcf)             VCF_FILE="$2";      shift 2 ;;
+    -k|--kfile)        KIR_FILE="$2";      shift 2 ;;
+    -o|--output)       OUTPUT_DIR="$2";    shift 2 ;;
+    -l|--locus)        LOCUS="$2";         shift 2 ;;
+    -a|--assembly)     ASSEMBLY="$2";      shift 2 ;;
+    --filter)          FILTER="$2";        shift 2 ;;
+    --split)           KIRSPLIT="$2";      shift 2 ;;
+    -r|--region)       LOCUS_REGION="$2";  shift 2 ;;
+    --nclassifier)     NCLASSIFIER="$2";   shift 2 ;;
+    --kirmaf)          KIRMAF="$2";        shift 2 ;;
+    --mac)             MAC="$2";           shift 2 ;;
+    -t|--threads)      THREADS="$2";       shift 2 ;;
+    -f|--force)        FORCE="true";       shift 1 ;;
+    --fill-missing)    FILL_MISSING="true"; shift 1 ;;
+    -v|--version)      show_version;       exit 0  ;;
+    -h|--help)
+      shift
+      show_help "${1:-}"
+      exit 0
+      ;;
+    --) shift; break ;;
+    -*) die "Unknown option: $1" ;;
+    *)
+      [[ "$1" != "$COMMAND" ]] && die "Unexpected argument: $1"
+      shift
+      ;;
+  esac
 done
 
-
-# -----------------------------------
-# Validate and execute
-# -----------------------------------
-case "$command" in
-    run)
-        echo "Running with input:$input output:$output threads:$threads"
-        ;;
-    impute)
-        [[ -z "${INPUT_FILE:-}" ]] && die "--input required"
-        [[ -z "${OUTPUT_DIR:-}" ]] && die "--output required"
-        [[ -z "${LOCUS:-}" ]] && die "--locus required"
-        [[ -z "${ASSEMBLY:-}" ]] && die "--assembly required (hg19/hg38)"
-
-        "imputation" "$INPUT_FILE" "$OUTPUT_DIR" "$LOCUS" "$ASSEMBLY" "$FILTER" "$THREADS"
-        ;;
-    train)
-        [[ -z "${BIM_FILE:-}" ]] && die "--bim file required"
-        [[ -z "${KIR_FILE:-}" ]] && die "--KIR file required"
-        [[ -z "${OUTPUT_DIR:-}" ]] && die "--output required"
-        [[ -z "${LOCUS:-}" ]] && die "--locus required"
-        [[ -z "${ASSEMBLY:-}" ]] && die "--assembly required (hg19/hg38)"
-
-        "train_model" "$BIM_FILE" "$KIR_FILE" "$LOCUS" "$OUTPUT_DIR" "$ASSEMBLY" "$FILTER" "$THREADS"
-        ;;
-    "")
-
-        show_help
-        exit 0
-        ;;
-    *)
-        echo "Error: Unknown command '$command'" >&2
-        exit 1
-        ;;
+# =============================================================================
+# COMMAND DISPATCH
+# =============================================================================
+case "$COMMAND" in
+  train)
+    train_model
+    ;;
+  impute)
+    imputation
+    ;;
+  version)
+    show_version
+    ;;
+  ""|help)
+    show_help
+    exit 0
+    ;;
+  *)
+    die "Unknown command: '$COMMAND'. Use: train | impute"
+    ;;
 esac
-
-
-
-
-

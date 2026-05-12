@@ -69,126 +69,360 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>This vignette provides a complete, step-by-step guide to training
-custom KIR prediction models using the train command in PONG2. Training
-is useful when:</p>
-<p>-You have a new or population-specific reference dataset -You want to
-update models with additional samples -You need locus-specific models
-(e.g. only KIR3DL1/S1) -You want to experiment with different SNP
-quality filters</p>
-<p>Prerequisites:</p>
+custom KIR prediction models using the <code>train</code> command in
+PONG2.</p>
+<p>Training is useful when:</p>
 <ul>
-<li>PLINK 2.0 installed and in PATH</li>
-<li>R ≥ 4.0 with PONG2 installed</li>
-<li>Reference PLINK files (chr19 or KIR region)</li>
-<li>Known KIR allele calls in CSV format</li>
+<li>You have a new or population-specific reference dataset</li>
+<li>You want to update models with additional samples</li>
+<li>You need locus-specific models (e.g. only <code>KIR3DL1</code> or
+<code>KIR2DL1</code>)</li>
+<li>You want to experiment with different SNP quality or allele
+frequency filters</li>
 </ul>
+<hr>
 </div>
 <div class="section level2">
-<h2 id="input-data-requirements">Input Data Requirements<a class="anchor" aria-label="anchor" href="#input-data-requirements"></a>
+<h2 id="prerequisites">Prerequisites<a class="anchor" aria-label="anchor" href="#prerequisites"></a>
 </h2>
-<ol style="list-style-type: decimal">
-<li>Reference genotypes (–bfile)</li>
-</ol>
-<ul>
-<li>PLINK bed/bim/fam files containing SNPs in the KIR locus
-(chr19)</li>
-<li>Recommended: extract region first to reduce size</li>
-</ul>
+<table class="table">
+<thead><tr class="header">
+<th>Requirement</th>
+<th>Version</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>PLINK2</td>
+<td>≥ 2.0</td>
+<td>Must be in PATH</td>
+</tr>
+<tr class="even">
+<td>R</td>
+<td>≥ 4.0</td>
+<td>With PONG2 installed</td>
+</tr>
+<tr class="odd">
+<td>Reference PLINK files</td>
+<td>—</td>
+<td>chr19 covering the KIR locus</td>
+</tr>
+<tr class="even">
+<td>KIR allele calls</td>
+<td>—</td>
+<td>CSV format (see below)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="step-1-prepare-input-data">Step 1: Prepare Input Data<a class="anchor" aria-label="anchor" href="#step-1-prepare-input-data"></a>
+</h2>
+<div class="section level3">
+<h3 id="a--reference-genotypes---bfile">1a. Reference genotypes (<code>--bfile</code>)<a class="anchor" aria-label="anchor" href="#a--reference-genotypes---bfile"></a>
+</h3>
+<p>PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).
+Extract chr19 from your full-genome PLINK files to reduce size:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">plink2</span> <span class="dt">\</span></span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="at">--bfile</span> full_reference <span class="dt">\</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">--chr</span> 19 <span class="dt">\</span></span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>  <span class="at">--make-bed</span> <span class="dt">\</span></span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>  <span class="at">--out</span> reference_chr19</span></code></pre></div>
-<ol start="2" style="list-style-type: decimal">
-<li>Known KIR calls (–kfile)</li>
-</ol>
-<p>CSV file with sample IDs and allele calls Minimal format with header
-optional:</p>
+</div>
+<div class="section level3">
+<h3 id="b--known-kir-allele-calls---kfile">1b. Known KIR allele calls (<code>--kfile</code>)<a class="anchor" aria-label="anchor" href="#b--known-kir-allele-calls---kfile"></a>
+</h3>
+<p>A comma-separated CSV file with sample IDs and phased KIR allele
+calls. Each locus requires two columns representing the two haplotypes
+(<code>_h1</code> and <code>_h2</code>).</p>
+<div class="section level4">
+<h4 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a>
+</h4>
+<pre><code>Sample,KIR2DL1_h1,KIR2DL1_h2,KIR3DL1_h1,KIR3DL1_h2
+SAMPLE001,KIR2DL1*00101,KIR2DL1*00302,KIR3DL1*001,KIR3DL1*002
+SAMPLE002,KIR2DL1*00104,KIR2DL1*0000,KIR3DL1*004,KIR3DL1*005
+SAMPLE003,KIR2DL1*009,KIR2DL1*00601,KIR3DL1*00302,KIR3DL1*001</code></pre>
+</div>
+<div class="section level4">
+<h4 id="rules">Rules<a class="anchor" aria-label="anchor" href="#rules"></a>
+</h4>
 <table class="table">
+<colgroup>
+<col width="42%">
+<col width="57%">
+</colgroup>
 <thead><tr class="header">
-<th align="left">sample_id</th>
-<th align="left">KIR2DL1_h1</th>
-<th align="left">KIR2DL1_h2</th>
-<th align="left">KIR3DL1_h1</th>
-<th align="left">KIR3DL1_h2</th>
+<th>Rule</th>
+<th>Detail</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left"><code>SAMPLE001</code></td>
-<td align="left">*00101</td>
-<td align="left">*00302</td>
-<td align="left">*00101</td>
-<td align="left">*00201</td>
+<td>Header required</td>
+<td>First row must be
+<code>Sample,&lt;locus&gt;_h1,&lt;locus&gt;_h2,...</code>
+</td>
 </tr>
 <tr class="even">
-<td align="left"><code>SAMPLE002</code></td>
-<td align="left">*00104</td>
-<td align="left">*0000</td>
-<td align="left">*00401</td>
-<td align="left">*00501</td>
+<td>Sample IDs</td>
+<td>Must exactly match IDs in the PLINK <code>.fam</code> file</td>
 </tr>
 <tr class="odd">
-<td align="left"><code>SAMPLE003</code></td>
-<td align="left">*009</td>
-<td align="left">*00601</td>
-<td align="left">*00302</td>
-<td align="left">*00101</td>
+<td>Allele names</td>
+<td>Use full standard nomenclature (e.g. <code>KIR3DL1*001</code>,
+<code>KIR2DL1*00201</code>)</td>
+</tr>
+<tr class="even">
+<td>Null allele</td>
+<td>Use <code>KIR&lt;locus&gt;*0000</code> (not blank, not
+<code>null</code>)</td>
+</tr>
+<tr class="odd">
+<td>Unresolved alleles</td>
+<td>Rows with <code>*new</code> or <code>*unresolved</code> are
+automatically excluded during training</td>
 </tr>
 </tbody>
 </table>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="step-2-run-training">Step 2: Run Training<a class="anchor" aria-label="anchor" href="#step-2-run-training"></a>
+</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">-o</span> models/KIR3DL1 <span class="dt">\</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
+<div class="section level3">
+<h3 id="with-optional-parameters">With optional parameters<a class="anchor" aria-label="anchor" href="#with-optional-parameters"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">-o</span> models/KIR3DL1 <span class="dt">\</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">-t</span> 20 <span class="dt">\</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">--nclassifier</span> 200 <span class="dt">\</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="at">--split</span> 0.8 <span class="dt">\</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="at">--kirmaf</span> 0.005 <span class="dt">\</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="at">--mac</span> 5</span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="key-training-parameters">Key training parameters<a class="anchor" aria-label="anchor" href="#key-training-parameters"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="21%">
+<col width="32%">
+<col width="46%">
+</colgroup>
+<thead><tr class="header">
+<th>Flag</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>--nclassifier</code></td>
+<td><code>100</code></td>
+<td>Number of ensemble classifiers — higher = more accurate but
+slower</td>
+</tr>
+<tr class="even">
+<td><code>--split</code></td>
+<td><code>0.7</code></td>
+<td>Proportion of samples for training (remainder used for
+validation)</td>
+</tr>
+<tr class="odd">
+<td><code>--kirmaf</code></td>
+<td><code>0.00</code></td>
+<td>Minimum KIR allele frequency — filters rare alleles from
+training</td>
+</tr>
+<tr class="even">
+<td><code>--mac</code></td>
+<td><code>3</code></td>
+<td>Minimum allele count for SNPs — removes very rare variants</td>
+</tr>
+<tr class="odd">
+<td><code>-r, --region</code></td>
+<td>Optimized default</td>
+<td>Custom SNP region (e.g. <code>55281035-55295784</code> for
+hg19)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="step-3-training-output">Step 3: Training Output<a class="anchor" aria-label="anchor" href="#step-3-training-output"></a>
+</h2>
+<p>After training completes, the output directory (<code>-o</code>) will
+contain:</p>
+<table class="table">
+<colgroup>
+<col width="31%">
+<col width="68%">
+</colgroup>
+<thead><tr class="header">
+<th>File</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>&lt;locus&gt;_model.RData</code></td>
+<td>Trained prediction model — main output</td>
+</tr>
+<tr class="even">
+<td><code>&lt;locus&gt;_test.RData</code></td>
+<td>Test genotypes (only when <code>--split &lt; 1</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>&lt;locus&gt;_split.RData</code></td>
+<td>Train/test split object (only when <code>--split &lt; 1</code>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> Temporary files in <code>tmp/</code> are
+automatically removed after training completes.</p>
+</blockquote>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="step-4-evaluate-model-performance">Step 4: Evaluate Model Performance<a class="anchor" aria-label="anchor" href="#step-4-evaluate-model-performance"></a>
+</h2>
+<p>If <code>--split &lt; 1</code>, PONG2 holds out a validation set
+during training. Load the saved objects in R to evaluate:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://NormanLabUCD.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Load model and test data</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"models/KIR3DL1/KIR3DL1_model.RData"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"models/KIR3DL1/KIR3DL1_test.RData"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"models/KIR3DL1/KIR3DL1_split.RData"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Rebuild model from object</span></span>
+<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaModelfromObj.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Predict on test set</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu">kirPredict</span><span class="op">(</span><span class="va">model</span>, <span class="va">test.geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Compare predictions vs truth</span></span>
+<span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="va">kirtab</span><span class="op">$</span><span class="va">validation</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pred</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="step-5-use-a-custom-model-for-imputation">Step 5: Use a Custom Model for Imputation<a class="anchor" aria-label="anchor" href="#step-5-use-a-custom-model-for-imputation"></a>
+</h2>
+<p>Once trained, use your model directly with
+<code>pong2 impute</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Note: custom model support via -m flag is available in PONG2 &gt;= 1.1.0</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">-i</span> chr19_target <span class="dt">\</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">-o</span> results/ <span class="dt">\</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">-m</span> models/KIR3DL1/KIR3DL1_model.RData</span></code></pre></div>
+<p>Or load it directly in R:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://NormanLabUCD.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Load your custom model</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"models/KIR3DL1/KIR3DL1_model.RData"</span><span class="op">)</span></span>
+<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaModelfromObj.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Load target genotypes</span></span>
+<span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaBED2Geno.html">hlaBED2Geno</a></span><span class="op">(</span><span class="st">"chr19_target.bed"</span>, <span class="st">"chr19_target.fam"</span>, <span class="st">"chr19_target.bim"</span>,</span>
+<span>                    import.chr <span class="op">=</span> <span class="st">"19"</span>, assembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Predict</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu">kirPredict</span><span class="op">(</span><span class="va">model</span>, <span class="va">geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="28%">
+<col width="52%">
+<col width="20%">
+</colgroup>
+<thead><tr class="header">
+<th>Error</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>No matching samples</code></td>
+<td>Sample IDs in <code>--kfile</code> don’t match
+<code>.fam</code>
+</td>
+<td>Check ID format — must match exactly</td>
+</tr>
+<tr class="even">
+<td><code>Insufficient training samples</code></td>
+<td>Too few overlapping samples (&lt;10)</td>
+<td>Verify PLINK and KIR file sample overlap</td>
+</tr>
+<tr class="odd">
+<td><code>No SNPs found in region</code></td>
+<td>Wrong assembly or region coordinates</td>
+<td>Check <code>--assembly</code> and <code>--region</code>
+</td>
+</tr>
+<tr class="even">
+<td><code>No model found for locus</code></td>
+<td>Locus name typo or unsupported locus</td>
+<td>Check locus spelling (e.g. <code>KIR3DL1</code> not
+<code>KIR3DL</code>)</td>
+</tr>
+<tr class="odd">
+<td>Memory issues</td>
+<td>Too many threads or large dataset</td>
+<td>Reduce <code>--threads</code> or use HPC with more RAM</td>
+</tr>
+<tr class="even">
+<td>Slow training</td>
+<td>Insufficient threads</td>
+<td>Increase <code>--threads</code> or reduce
+<code>--nclassifier</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Low accuracy</td>
+<td>Too few training samples or rare alleles</td>
+<td>Increase sample size or adjust <code>--kirmaf</code>
+</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="next-steps">Next Steps<a class="anchor" aria-label="anchor" href="#next-steps"></a>
+</h2>
 <ul>
-<li>Columns: two per KIR locus/gene where h1 and h2 represent KIR
-haplotypes</li>
-<li>Alleles: use standard nomenclature (e.g. <em>001, </em>00201)</li>
-<li>null allele: leave as <code>*0000</code>
+<li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html">PONG2-imputation</a>
+for the full imputation workflow</li>
+<li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-basic.html">PONG2
+Basics</a> for installation and quick start</li>
+<li>Report issues: <a href="https://github.com/NormanLabUCD/PONG2/issues/new" class="external-link">Open a GitHub
+issue</a>
 </li>
 </ul>
-</div>
-<div class="section level2">
-<h2 id="run-training">Run training<a class="anchor" aria-label="anchor" href="#run-training"></a>
-</h2>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">-o</span> models/custom <span class="dt">\</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  <span class="at">-l</span> KIR <span class="dt">\</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">-t</span> 10</span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="after-training-completes-the-output-directory--o-will-contain">After training completes, the output directory (-o) will
-contain:<a class="anchor" aria-label="anchor" href="#after-training-completes-the-output-directory--o-will-contain"></a>
-</h2>
-<ul>
-<li>model.rds or model.RData — trained prediction model (main file)</li>
-<li>training_log.txt — summary of training process, metrics, and
-warnings</li>
-<li>tmp/ — temporary files (can be deleted)</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="using-a-custom-model-for-imputation">Using a custom model for imputation<a class="anchor" aria-label="anchor" href="#using-a-custom-model-for-imputation"></a>
-</h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="at">-i</span> chr19 <span class="dt">\</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">-o</span> results/ <span class="dt">\</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">-l</span> KIR <span class="dt">\</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">-m</span> models/custom/model.rds</span></code></pre></div>
-<p><em>Note:</em> The <code>-m, --model</code> flag is used to specify a
-custom model file.</p>
-</div>
-<div class="section level2">
-<h2 id="troubleshooting-training">Troubleshooting Training<a class="anchor" aria-label="anchor" href="#troubleshooting-training"></a>
-</h2>
-<ul>
-<li>“No matching samples” → Ensure sample IDs in –kfile exactly match
-PLINK .fam</li>
-<li>Low SNP coverage → Increase –filter or pre-impute reference
-panel</li>
-<li>Memory issues → Reduce threads or use a machine with more RAM</li>
-<li>Slow training → Use more –threads or smaller reference dataset</li>
-</ul>
+<p>Happy KIR model training! 🧬</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
