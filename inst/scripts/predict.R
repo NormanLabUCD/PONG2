@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-library(PONG2)
-library(parallel)
+suppressPackageStartupMessages(library(PONG2))
+suppressPackageStartupMessages(library(parallel))
 
 # =============================================================================
 # ARGUMENTS

@@ -1,4 +1,4 @@
-library(PONG2)
+suppressPackageStartupMessages(library(PONG2))
 library(readr)
 library(parallel)
 suppressPackageStartupMessages(library(tidyverse))

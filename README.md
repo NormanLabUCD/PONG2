@@ -210,11 +210,12 @@ pong2 train [options]
 
 The KIR file (`--kfile`) must be a CSV with the following structure:
 
-```
-Sample,KIR3DL1_h1,KIR3DL1_h2
-HG00096,KIR3DL1*001,KIR3DL1*002
-HG00097,KIR3DL1*005,KIR3DL1*015
-```
+
+| Sample | KIR3DL1_h1 | KIR3DL1_h2 |
+|--------|------------|------------|
+| `HG00096` | `KIR3DL1*001` | `KIR3DL1*002` |
+| `HG00097` | `KIR3DL1*005` | `KIR3DL1*015` |
+
 
 #### Example
 
