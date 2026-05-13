@@ -220,7 +220,7 @@ The KIR file (`--kfile`) must be a CSV with the following structure:
 #### Example
 
 ```bash
-pong2 train -i example/chr19 -k -i example/kir_call.csv
+pong2 train --bfile example/chr19 --kfile example/kir_call.csv --output test --locus KIR3DL1 --assembly hg19 --nclassifier 50
 ```
 
 ---
