@@ -338,8 +338,7 @@ If you use PONG2 in your research, please cite:
 ---
 
 ## Contact & Support
-- **Tutorial** (basic, imputation, train):
-  [https://normanlabucd.github.io/PONG2/](https://normanlabucd.github.io/PONG2/)
+- **Tutorial** ([basic](https://normanlabucd.github.io/PONG2/), [imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html), [train](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html))
 
 - **GitHub Issues** (preferred for bug reports, feature requests, questions):
   [https://github.com/NormanLabUCD/PONG2/issues](https://github.com/NormanLabUCD/PONG2/issues)
