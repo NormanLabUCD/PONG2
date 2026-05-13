@@ -1,5 +1,5 @@
-#1. pong2 impute -i example/chr19 -o ./out -l KIR3DL1 -a hg19
+#1. pong2 impute -i example/chr19 -o out -l KIR3DL1 -a hg19
 
-#2. pong2 impute -i example/chr19 -o ./out -l KIR3DL1 -a hg19 --fill-missing
+#2. pong2 impute -i example/chr19 -o out -l KIR3DL1 -a hg19 --fill-missing
 
 #3. pong2 train --bfile example/chr19 --kfile example/kir_call.csv --output test --locus KIR3DL1 --assembly hg19 --nclassifier 50
