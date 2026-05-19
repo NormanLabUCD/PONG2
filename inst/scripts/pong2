@@ -52,6 +52,7 @@ FILTER=0.005
 LOCUS_REGION="Null"
 FORCE="false"
 FILL_MISSING="false"
+MODEL_PATH="Null"   # User-supplied custom model for imputation
 
 # =============================================================================
 # KIR REGION POSITIONS
@@ -189,7 +190,7 @@ train_model() {
   preprocess_plink "$BIM_FILE" "$OUTPUT_DIR" "$KIR_FILE"
 
   # ── Print training summary ───────────────────────────────────────────────
-  cat <<EOF
+  cat <<SUMMARY
 
 $(echo -e "${BOLD}--- Training Summary ---${NC}")
   Locus:         $LOCUS
@@ -201,7 +202,7 @@ $(echo -e "${BOLD}--- Training Summary ---${NC}")
   MAC:           $MAC
   Locus Region:  $LOCUS_REGION
 ------------------------
-EOF
+SUMMARY
 
   # ── Run R training script ─────────────────────────────────────────────────
   log_step "Training KIR model: $LOCUS"
@@ -237,9 +238,14 @@ imputation() {
   [[ -n "$ASSEMBLY"   ]] || die "--assembly required (hg19/hg38)"
   check_plink2
 
+  # ── Validate custom model if supplied ────────────────────────────────────
+  if [[ "$MODEL_PATH" != "Null" ]]; then
+    check_file "$MODEL_PATH" "Custom model file"
+    log_info "Using custom model: $MODEL_PATH"
+  fi
+
   # ── Route: fill-missing uses VCF only; normal imputation uses PLINK ───────
   if [[ "$FILL_MISSING" == "true" ]]; then
-    # --vcf is the sole input — PLINK cannot hold phased haplotype data
     [[ -n "$VCF_FILE" ]] || die \
       "--vcf is required with --fill-missing.\n" \
       "  PLINK files cannot hold phased haplotype data required by minimac4.\n" \
@@ -247,7 +253,6 @@ imputation() {
       "    pong2 impute --vcf phased.vcf.gz --fill-missing ..."
     check_file "$VCF_FILE" "Pre-phased VCF"
   else
-    # Normal imputation — PLINK bfile required
     [[ -n "$BIM_FILE" ]] || die "--bfile required"
     check_plink_bfile "$BIM_FILE"
   fi
@@ -271,11 +276,9 @@ imputation() {
   local filename
 
   if [[ "$FILL_MISSING" == "true" ]]; then
-    # ── Derive PLINK from VCF — no need for separate -i input ──────────────
     filename=$(basename "${VCF_FILE%.vcf.gz}")
     log_step "Extracting KIR region from VCF: ${chr}:${start}-${end}"
 
-    # Ensure VCF is bgzipped and indexed
     local input_vcf="$VCF_FILE"
     if [[ "$VCF_FILE" != *.gz ]]; then
       log_info "Compressing VCF with bgzip..."
@@ -284,7 +287,6 @@ imputation() {
     fi
     [[ -f "${input_vcf}.tbi" ]] || tabix -f "$input_vcf"
 
-    # Fix chr prefix if needed
     local vcf_chr
     vcf_chr=$(zcat "$input_vcf" | grep -v "^#" | head -1 | awk '{print $1}')
     if [[ "$ASSEMBLY" == "hg38" && "$vcf_chr" != chr* ]]; then
@@ -303,7 +305,6 @@ imputation() {
       input_vcf="$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
     fi
 
-    # Convert VCF → PLINK for missingness check
     log_info "Converting VCF to PLINK for SNP matching check..."
     plink2 \
       --vcf "$input_vcf" \
@@ -315,7 +316,6 @@ imputation() {
       --silent
 
   else
-    # ── Normal imputation — extract KIR region from PLINK ──────────────────
     filename=$(basename "$BIM_FILE")
     log_step "Extracting KIR region from PLINK: ${chr}:${start}-${end}"
 
@@ -343,7 +343,8 @@ imputation() {
     "$ASSEMBLY" \
     "$LOCUS" \
     "$FILTER" \
-    "$PONG2_root")
+    "$PONG2_root" \
+    "$MODEL_PATH")
 
   local matching_pct
   matching_pct=$(awk "BEGIN {printf \"%.2f\", $matching * 100}")
@@ -386,11 +387,7 @@ _run_minimac4_from_vcf() {
   local filename="$2"
 
   log_info "Running minimac4 on pre-phased VCF: $input_vcf"
-
-  # Run minimac4
   _minimac4_impute "$input_vcf" "$filename"
-
-  # Convert imputed VCF to PLINK
   _imputed_vcf_to_plink "$filename"
 }
 
@@ -490,14 +487,15 @@ kir_imputation() {
   # Copy final plink files to output
   cp "${plink_file}.nodup."* "$OUTPUT_DIR/"
 
-  # Run R prediction
+  # Run R prediction — pass MODEL_PATH as 7th argument
   "$RSCRIPT" --vanilla "$predict_script" \
     "${plink_file}.nodup" \
     "$OUTPUT_DIR" \
     "$LOCUS" \
     "$ASSEMBLY" \
     "$FILTER" \
-    "$THREADS"
+    "$THREADS" \
+    "$MODEL_PATH"
 
   # Cleanup
   log_step "Cleaning up temporary files..."
@@ -509,7 +507,6 @@ kir_imputation() {
 # =============================================================================
 # ARGUMENT PARSING
 # =============================================================================
-# Step 1: Detect command (first non-flag argument)
 args=("$@")
 for arg in "${args[@]}"; do
   case "$arg" in
@@ -518,7 +515,6 @@ for arg in "${args[@]}"; do
   esac
 done
 
-# Step 2: Parse all arguments
 if (( ${#args[@]} > 0 )); then
   set -- "${args[@]}"
 fi
@@ -538,6 +534,7 @@ while [[ $# -gt 0 ]]; do
     --kirmaf)          KIRMAF="$2";        shift 2 ;;
     --mac)             MAC="$2";           shift 2 ;;
     -t|--threads)      THREADS="$2";       shift 2 ;;
+    -m|--model)        MODEL_PATH="$2";    shift 2 ;;
     -f|--force)        FORCE="true";       shift 1 ;;
     --fill-missing)    FILL_MISSING="true"; shift 1 ;;
     -v|--version)      show_version;       exit 0  ;;

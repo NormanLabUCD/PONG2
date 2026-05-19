@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 suppressPackageStartupMessages(library(PONG2))
-suppressPackageStartupMessages(library(parallel))
 
 # =============================================================================
 # ARGUMENTS
@@ -8,15 +7,16 @@ suppressPackageStartupMessages(library(parallel))
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 6) {
-  stop("Usage: predict.R <input> <output> <locus> <assembly> <filter> <threads>")
+  stop("Usage: predict.R <input> <output> <locus> <assembly> <filter> <threads> [model_path]")
 }
 
-input    <- args[1]
-output   <- args[2]
-locus    <- args[3]
-assembly <- args[4]
-filter   <- as.numeric(args[5])
-threads  <- as.numeric(args[6])
+input      <- args[1]
+output     <- args[2]
+locus      <- args[3]
+assembly   <- args[4]
+filter     <- as.numeric(args[5])
+threads    <- as.numeric(args[6])
+model_path <- if (length(args) >= 7 && args[7] != "Null") args[7] else NULL
 
 # Chunk size is fixed internally — not user configurable
 # Chunking applied automatically when n_samples > CHUNK_SIZE
@@ -35,7 +35,7 @@ stopifnot(
 )
 
 # =============================================================================
-# MODEL LOADER
+# MODEL LOADER — built-in
 # =============================================================================
 modelObject <- function(locus, filter = 0.005, assembly = c("hg38", "hg19")) {
   assembly <- match.arg(assembly)
@@ -63,20 +63,58 @@ modelObject <- function(locus, filter = 0.005, assembly = c("hg38", "hg19")) {
 }
 
 # =============================================================================
-# LOAD GENOTYPE DATA
+# PRINT SETTINGS
 # =============================================================================
 cat("\n--- Prediction Settings ---\n")
-cat("Input:    ", input,    "\n")
-cat("Output:   ", output,   "\n")
-cat("Locus:    ", locus,    "\n")
-cat("Assembly: ", assembly, "\n")
-cat("Filter:   ", filter,   "\n")
-cat("Threads:  ", threads,  "\n")
+cat("Input:      ", input,                               "\n")
+cat("Output:     ", output,                              "\n")
+cat("Locus:      ", locus,                               "\n")
+cat("Assembly:   ", assembly,                            "\n")
+cat("Filter:     ", filter,                              "\n")
+cat("Threads:    ", threads,                             "\n")
+cat("Model:      ", if (is.null(model_path))
+  "Built-in (PONG2 package)"
+  else
+    model_path,                        "\n")
 cat("---------------------------\n\n")
 
-mobj  <- modelObject(locus, filter, assembly)
+# =============================================================================
+# LOAD MODEL — custom or built-in
+# =============================================================================
+if (!is.null(model_path)) {
+  # ── User-supplied model ───────────────────────────────────────────────────
+  cat("Loading custom model:", model_path, "\n")
+
+  if (!file.exists(model_path)) {
+    stop("Custom model file not found: ", model_path)
+  }
+
+  local_env <- new.env()
+  load(model_path, envir = local_env)
+
+  if (!"mobj" %in% ls(local_env)) {
+    stop(
+      "Custom model file must contain an object named 'mobj'.\n",
+      "Save your model with:\n",
+      "  mobj <- hlaModelToObj(model)\n",
+      "  save(mobj, file = '", model_path, "')"
+    )
+  }
+
+  mobj <- local_env$mobj
+  cat("Custom model loaded successfully\n\n")
+
+} else {
+  # ── Built-in pre-trained model ────────────────────────────────────────────
+  cat("Loading built-in PONG2 model...\n\n")
+  mobj <- modelObject(locus, filter, assembly)
+}
+
 model <- hlaModelFromObj(mobj)
 
+# =============================================================================
+# LOAD GENOTYPE DATA
+# =============================================================================
 bed.fn <- paste0(input, ".bed")
 fam.fn <- paste0(input, ".fam")
 bim.fn <- paste0(input, ".bim")
@@ -91,15 +129,23 @@ geno <- hlaGenoSubsetFlank(genotype, locus,
                            assembly = assembly)
 
 # =============================================================================
-# PREDICTION — parallel + auto-chunked when n_samples > 2000
+# SET THREADING
+# RcppParallel controls HIBAG internal C++ threads — no makeCluster needed
+# RcppParallel uses shared memory threads — handle stays valid
+# =============================================================================
+if (requireNamespace("RcppParallel", quietly = TRUE)) {
+  RcppParallel::setThreadOptions(numThreads = threads)
+  cat(paste0("Threading: RcppParallel (", threads, " threads)\n"))
+} else {
+  cat("Threading: RcppParallel not available — using default threading\n")
+  cat("Tip: install.packages('RcppParallel') for explicit thread control\n")
+}
+
+# =============================================================================
+# PREDICTION — auto-chunked when n_samples > 2000
 # =============================================================================
 n_samples <- length(geno$sample.id)
 cat(paste0("Total samples: ", n_samples, "\n"))
-
-# Create cluster once — shared across all chunks
-# on.exit guarantees cluster stops even if an error occurs
-cl <- makeCluster(threads)
-on.exit(stopCluster(cl))
 
 if (n_samples <= CHUNK_SIZE) {
   # ── No chunking needed ────────────────────────────────────────────────────
@@ -178,5 +224,3 @@ write.table(pred.guess$value,
             sep       = ",",
             quote     = FALSE)
 
-#cat(paste0("\nResults saved in: ", out_dir, "\n"))
-#cat("Prediction complete.\n")

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-library(PONG2)
+suppressPackageStartupMessages(library(PONG2))
 
 # =============================================================================
 # ARGUMENTS
@@ -7,7 +7,7 @@ library(PONG2)
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 6) {
-  stop("Usage: snpmissingness.R <input> <output> <assembly> <locus> <filter> <PONG2_root>")
+  stop("Usage: snpmissingness.R <input> <output> <assembly> <locus> <filter> <PONG2_root> [model_path]")
 }
 
 input      <- args[1]
@@ -16,6 +16,7 @@ assembly   <- args[3]
 locus      <- args[4]
 filter     <- as.numeric(args[5])
 PONG2_root <- args[6]
+model_path <- if (length(args) >= 7 && args[7] != "Null") args[7] else NULL
 
 # =============================================================================
 # VALIDATE ARGUMENTS
@@ -30,72 +31,91 @@ stopifnot(
 )
 
 # =============================================================================
-# LOAD MODEL OBJECT ONCE
-# =============================================================================
-rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
-object    <- readRDS(rds_path)
-getObject <- get(object$models)
-
-# =============================================================================
-# VALIDATE ASSEMBLY
+# VALIDATE ASSEMBLY & LOCUS
 # =============================================================================
 assembly <- match.arg(assembly, choices = c("hg19", "hg38"))
 locus    <- toupper(locus)
 
 # =============================================================================
-# VALIDATE FILTER
+# LOAD MODEL — custom or built-in
 # =============================================================================
-valid_filters <- c(0, 0.01, 0.005)
-if (!filter %in% valid_filters) {
-  stop("filter must be one of: ", paste(valid_filters, collapse = ", "),
-       " — received: ", filter)
-}
+if (!is.null(model_path)) {
+  # ── User-supplied model ───────────────────────────────────────────────────
+  if (!file.exists(model_path)) {
+    stop("Custom model file not found: ", model_path)
+  }
 
-filter_key <- switch(as.character(filter),
-                     "0"     = "allele_fileter_00",
-                     "0.01"  = "allele_fileter_001",
-                     "0.005" = "allele_fileter_0005"
-)
+  local_env <- new.env()
+  load(model_path, envir = local_env)
 
-# =============================================================================
-# VALIDATE LOCUS — derived directly from model object
-# =============================================================================
-
-# Get available filter keys for this assembly
-available_filter_keys <- names(getObject[[assembly]])
-
-# Get all loci available across ALL filter levels for this assembly
-supported_loci <- unique(unlist(
-  lapply(available_filter_keys, function(fk) names(getObject[[assembly]][[fk]]))
-))
-
-if (!locus %in% supported_loci) {
-  stop(
-    "Locus '", locus, "' is not available for assembly '", assembly, "'.\n",
-    "Supported loci for ", assembly, ": ",
-    paste(sort(supported_loci), collapse = ", ")
-  )
-}
-
-# Check locus exists for the requested filter level specifically
-if (is.null(getObject[[assembly]][[filter_key]][[locus]])) {
-  available_for_locus <- available_filter_keys[
-    sapply(available_filter_keys, function(fk)
-      !is.null(getObject[[assembly]][[fk]][[locus]])
+  if (!"mobj" %in% ls(local_env)) {
+    stop(
+      "Custom model file must contain an object named 'mobj'.\n",
+      "Save your model with:\n",
+      "  mobj <- hlaModelToObj(model)\n",
+      "  save(mobj, file = '", model_path, "')"
     )
-  ]
-  stop(
-    "Locus '", locus, "' is not available for filter=", filter,
-    " in assembly '", assembly, "'.\n",
-    "Available filter levels for this locus: ",
-    paste(available_for_locus, collapse = ", ")
+  }
+
+  mobj <- local_env$mobj
+
+} else {
+  # ── Built-in pre-trained model ────────────────────────────────────────────
+
+  # Load model object once
+  rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
+  object    <- readRDS(rds_path)
+  getObject <- get(object$models)
+
+  # Validate filter
+  valid_filters <- c(0, 0.01, 0.005)
+  if (!filter %in% valid_filters) {
+    stop("filter must be one of: ", paste(valid_filters, collapse = ", "),
+         " — received: ", filter)
+  }
+
+  filter_key <- switch(as.character(filter),
+                       "0"     = "allele_fileter_00",
+                       "0.01"  = "allele_fileter_001",
+                       "0.005" = "allele_fileter_0005"
   )
+
+  # Validate locus — derived directly from model object
+  available_filter_keys <- names(getObject[[assembly]])
+
+  supported_loci <- unique(unlist(
+    lapply(available_filter_keys, function(fk) names(getObject[[assembly]][[fk]]))
+  ))
+
+  if (!locus %in% supported_loci) {
+    stop(
+      "Locus '", locus, "' is not available for assembly '", assembly, "'.\n",
+      "Supported loci for ", assembly, ": ",
+      paste(sort(supported_loci), collapse = ", ")
+    )
+  }
+
+  # Check locus exists for the requested filter level specifically
+  if (is.null(getObject[[assembly]][[filter_key]][[locus]])) {
+    available_for_locus <- available_filter_keys[
+      sapply(available_filter_keys, function(fk)
+        !is.null(getObject[[assembly]][[fk]][[locus]])
+      )
+    ]
+    stop(
+      "Locus '", locus, "' is not available for filter=", filter,
+      " in assembly '", assembly, "'.\n",
+      "Available filter levels for this locus: ",
+      paste(available_for_locus, collapse = ", ")
+    )
+  }
+
+  mobj <- getObject[[assembly]][[filter_key]][[locus]]
 }
 
 # =============================================================================
-# LOAD MODEL AND COMPUTE SNP OVERLAP
+# COMPUTE SNP OVERLAP
 # =============================================================================
-mobj  <- getObject[[assembly]][[filter_key]][[locus]]
 model <- hlaModelFromObj(mobj)
 
 min_pos <- min(model$snp.position)
