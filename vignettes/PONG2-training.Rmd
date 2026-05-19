@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE   # Examples are shown but not executed during vignette build
+  eval = FALSE
 )
 ```
 
@@ -54,11 +54,7 @@ PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).
 Extract chr19 from your full-genome PLINK files to reduce size:
 
 ```bash
-plink2 \
-  --bfile full_reference \
-  --chr 19 \
-  --make-bed \
-  --out reference_chr19
+plink2 --bfile full_reference --chr 19 --make-bed --out reference_chr19
 ```
 
 ### 1b. Known KIR allele calls (`--kfile`)
@@ -83,7 +79,7 @@ SAMPLE003,KIR2DL1*009,KIR2DL1*00601,KIR3DL1*00302,KIR3DL1*001
 | Sample IDs | Must exactly match IDs in the PLINK `.fam` file |
 | Allele names | Use full standard nomenclature (e.g. `KIR3DL1*001`, `KIR2DL1*00201`) |
 | Null allele | Use `KIR<locus>*0000` (not blank, not `null`) |
-| Unresolved alleles | Rows with `*new` or `*unresolved` are automatically excluded during training |
+| Unresolved alleles | Rows with `*new` or `*unresolved` are automatically excluded |
 
 ---
 
@@ -149,20 +145,42 @@ objects in R to evaluate:
 ```r
 library(PONG2)
 
-# Load model and test data
-load("models/KIR3DL1/KIR3DL1_model.RData")
-load("models/KIR3DL1/KIR3DL1_test.RData")
-load("models/KIR3DL1/KIR3DL1_split.RData")
-
-# Rebuild model from object
-model <- hlaModelFromObj(mobj)
+# Load saved objects
+path      <- "models/KIR3DL1"
+mobj      <- get(load(paste0(path, "_model.RData")))
+test.geno <- get(load(paste0(path, "_test.RData")))
+kirtab    <- get(load(paste0(path, "_split.RData")))
+model     <- hlaModelFromObj(mobj)
 
 # Predict on test set
-pred <- kirPredict(model, test.geno, type = "response+prob")
+pred <- kirPredict(model, test.geno, type = "response+prob", verbose = FALSE)
 
-# Compare predictions vs truth
-truth <- kirtab$validation
-summary(pred)
+# Evaluate using hlaCompareAllele
+comp <- hlaCompareAllele(kirtab$validation, pred,
+                         allele.limit = model, call.threshold = 0.5)
+
+# Overall accuracy
+acc <- round(comp$overall$acc.haplo, digits = 3)
+cat(sprintf("Haplotype accuracy: %.1f%%\n", acc * 100))
+cat(sprintf("Genotype accuracy:  %.1f%%\n", round(comp$overall$acc.geno,  3) * 100))
+cat(sprintf("Call rate:          %.1f%%\n", round(comp$overall$call.rate, 3) * 100))
+cat(sprintf("Test samples:       %d\n",     comp$overall$n.samp))
+
+# Per-allele accuracy
+if (!is.null(comp$detail)) {
+  allele_detail <- comp$detail[order(comp$detail$acc.haplo), ]
+  print(allele_detail)
+}
+
+# Save summary
+eval_summary <- data.frame(
+  Locus     = "KIR3DL1",
+  N_test    = comp$overall$n.samp,
+  Acc_Haplo = round(comp$overall$acc.haplo  * 100, 2),
+  Acc_Geno  = round(comp$overall$acc.geno   * 100, 2),
+  Call_Rate = round(comp$overall$call.rate  * 100, 2)
+)
+write.csv(eval_summary, file = paste0(path, "_eval_summary.csv"), row.names = FALSE)
 ```
 
 ---
@@ -172,7 +190,6 @@ summary(pred)
 Once trained, use your model directly with `pong2 impute`:
 
 ```bash
-# Note: custom model support via -m flag is available in PONG2 >= 1.1.0
 pong2 impute \
   -i chr19_target \
   -o results/ \
@@ -186,15 +203,11 @@ Or load it directly in R:
 ```r
 library(PONG2)
 
-# Load your custom model
 load("models/KIR3DL1/KIR3DL1_model.RData")
 model <- hlaModelFromObj(mobj)
 
-# Load target genotypes
 geno <- hlaBED2Geno("chr19_target.bed", "chr19_target.fam", "chr19_target.bim",
                     import.chr = "19", assembly = "hg38")
-
-# Predict
 pred <- kirPredict(model, geno, type = "response+prob")
 ```
 
