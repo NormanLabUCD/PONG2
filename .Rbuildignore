@@ -1,8 +1,0 @@
-^\.github$
-^\.gitignore$
-^LICENSE$
-^\.Rhistory$
-^.*\.Rproj$
-^\.Rproj\.user$
-^doc$
-^Meta$

@@ -7,3 +7,6 @@ inst/extdata/model
 /doc/
 /doc/reference/
 /Meta/
+.RData
+.Rhistory
+.Rbuildignore
