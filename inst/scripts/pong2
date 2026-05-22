@@ -52,7 +52,9 @@ FILTER=0.005
 LOCUS_REGION="Null"
 FORCE="false"
 FILL_MISSING="false"
-MODEL_PATH="Null"   # User-supplied custom model for imputation
+MODEL_PATH="Null"
+THRESHOLD=0.5
+MODEL_DIR=""
 
 # =============================================================================
 # KIR REGION POSITIONS
@@ -224,6 +226,31 @@ SUMMARY
   rm -rf "$OUTPUT_DIR/tmp"
 
   log_info "Training complete. Model saved to: $OUTPUT_DIR/${LOCUS}_model.RData"
+}
+
+# =============================================================================
+# COMMAND: TRAIN EVALUATION
+# =============================================================================
+
+evaluation() {
+  log_step "PONG2 Model Evaluation"
+
+  [[ -n "$MODEL_DIR" ]] || die "--model-dir required"
+  [[ -n "$LOCUS"     ]] || die "--locus required"
+
+  # Check model files exist
+  check_file "${MODEL_DIR}/${LOCUS}_model.RData" "Model file"
+  check_file "${MODEL_DIR}/${LOCUS}_test.RData"  "Test genotype file"
+  check_file "${MODEL_DIR}/${LOCUS}_split.RData" "Split file"
+
+  local evaluate_script
+  evaluate_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'evaluate.R', package='PONG2'))")"
+  [[ -f "$evaluate_script" ]] || die "evaluate.R not found in PONG2 package"
+
+  "$RSCRIPT" --vanilla "$evaluate_script" \
+    "$MODEL_DIR" \
+    "$LOCUS" \
+    "$THRESHOLD"
 }
 
 # =============================================================================
@@ -536,7 +563,9 @@ while [[ $# -gt 0 ]]; do
     -t|--threads)      THREADS="$2";       shift 2 ;;
     -m|--model)        MODEL_PATH="$2";    shift 2 ;;
     -f|--force)        FORCE="true";       shift 1 ;;
-    --fill-missing)    FILL_MISSING="true"; shift 1 ;;
+    --fill-missing)    FILL_MISSING="true";shift 1 ;;
+    --model-dir)       MODEL_DIR="$2";     shift 2 ;;
+    --threshold)       THRESHOLD="$2";     shift 2 ;;
     -v|--version)      show_version;       exit 0  ;;
     -h|--help)
       shift
@@ -559,6 +588,9 @@ case "$COMMAND" in
   train)
     train_model
     ;;
+  evaluate)
+  evaluation
+   ;;
   impute)
     imputation
     ;;
