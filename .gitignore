@@ -14,3 +14,10 @@ PONG2.Rcheck/
 output/
 src/*.o
 src/*.so
+
+PONG2.Rcheck/
+PONG2_*.tar.gz
+output/
+
+CRAN-SUBMISSION
+cran-comments.md
