@@ -149,9 +149,72 @@ frequency filters</li>
 <div class="section level3">
 <h3 id="a--reference-genotypes---bfile">1a. Reference genotypes (<code>--bfile</code>)<a class="anchor" aria-label="anchor" href="#a--reference-genotypes---bfile"></a>
 </h3>
-<p>PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).
-Extract chr19 from your full-genome PLINK files to reduce size:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">plink2</span> <span class="at">--bfile</span> full_reference <span class="at">--chr</span> 19 <span class="at">--make-bed</span> <span class="at">--out</span> reference_chr19</span></code></pre></div>
+<p>PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).</p>
+<div class="section level4">
+<h4 id="using-the-1000-genomes-project-1kgp-as-reference-panel">Using the 1000 Genomes Project (1KGP) as reference panel<a class="anchor" aria-label="anchor" href="#using-the-1000-genomes-project-1kgp-as-reference-panel"></a>
+</h4>
+<p>The 1KGP is the recommended reference panel for training PONG2
+models. Choose the appropriate panel for your genome assembly:</p>
+<table class="table">
+<colgroup>
+<col width="22%">
+<col width="46%">
+<col width="20%">
+<col width="11%">
+</colgroup>
+<thead><tr class="header">
+<th>Assembly</th>
+<th>1KGP Reference Panel</th>
+<th>Samples</th>
+<th>URL</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>hg19</td>
+<td>Phase 3</td>
+<td>2,504</td>
+<td><a href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/" class="external-link uri">https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/</a></td>
+</tr>
+<tr class="even">
+<td>hg38</td>
+<td>High Coverage</td>
+<td>3,202</td>
+<td><a href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/" class="external-link uri">https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/</a></td>
+</tr>
+</tbody>
+</table>
+<p>Download and extract the KIR region:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># ── hg19: 1KGP Phase 3 ──────────────────────────────────────────────────────</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">wget</span> https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/<span class="dt">\</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="ex">plink2</span> <span class="dt">\</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="at">--vcf</span> ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz <span class="dt">\</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  <span class="at">--chr</span> 19 <span class="dt">\</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="at">--from-bp</span> 55000000 <span class="dt">\</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  <span class="at">--to-bp</span> 55400000 <span class="dt">\</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>  <span class="at">--make-bed</span> <span class="dt">\</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>  <span class="at">--out</span> reference_chr19_hg19</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="co"># ── hg38: 1KGP High Coverage ─────────────────────────────────────────────────</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="fu">wget</span> https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/<span class="dt">\</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/<span class="dt">\</span></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>1kGP_high_coverage_Illumina.chr19.filtered.SNV_INDEL_SV_phased_panel.vcf.gz</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="ex">plink2</span> <span class="dt">\</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>  <span class="at">--vcf</span> 1kGP_high_coverage_Illumina.chr19.filtered.SNV_INDEL_SV_phased_panel.vcf.gz <span class="dt">\</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>  <span class="at">--chr</span> 19 <span class="dt">\</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  <span class="at">--from-bp</span> 54000000 <span class="dt">\</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>  <span class="at">--to-bp</span> 55000000 <span class="dt">\</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>  <span class="at">--make-bed</span> <span class="dt">\</span></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>  <span class="at">--out</span> reference_chr19_hg38</span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="using-your-own-reference-dataset">Using your own reference dataset<a class="anchor" aria-label="anchor" href="#using-your-own-reference-dataset"></a>
+</h4>
+<p>Extract chr19 from your full-genome PLINK files:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">plink2</span> <span class="at">--bfile</span> full_reference <span class="at">--chr</span> 19 <span class="at">--make-bed</span> <span class="at">--out</span> reference_chr19</span></code></pre></div>
+</div>
 </div>
 <div class="section level3">
 <h3 id="b--known-kir-allele-calls---kfile">1b. Known KIR allele calls (<code>--kfile</code>)<a class="anchor" aria-label="anchor" href="#b--known-kir-allele-calls---kfile"></a>
@@ -214,27 +277,27 @@ automatically excluded</td>
 <div class="section level2">
 <h2 id="step-2-run-training">Step 2: Run Training<a class="anchor" aria-label="anchor" href="#step-2-run-training"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">-o</span> models/KIR3DL1 <span class="dt">\</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
-<div class="section level3">
-<h3 id="with-optional-parameters">With optional parameters<a class="anchor" aria-label="anchor" href="#with-optional-parameters"></a>
-</h3>
 <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">-o</span> models/KIR3DL1 <span class="dt">\</span></span>
 <span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">-t</span> 20 <span class="dt">\</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">--nclassifier</span> 200 <span class="dt">\</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="at">--split</span> 0.8 <span class="dt">\</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="at">--kirmaf</span> 0.005 <span class="dt">\</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="at">--mac</span> 5</span></code></pre></div>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
+<div class="section level3">
+<h3 id="with-optional-parameters">With optional parameters<a class="anchor" aria-label="anchor" href="#with-optional-parameters"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="dt">\</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">-i</span> reference_chr19 <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">-k</span> kir_calls.csv <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">-o</span> models/KIR3DL1 <span class="dt">\</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">-t</span> 20 <span class="dt">\</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">--nclassifier</span> 200 <span class="dt">\</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="at">--split</span> 0.8 <span class="dt">\</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="at">--kirmaf</span> 0.005 <span class="dt">\</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="at">--mac</span> 5</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="key-training-parameters">Key training parameters<a class="anchor" aria-label="anchor" href="#key-training-parameters"></a>
@@ -324,29 +387,42 @@ automatically removed after training completes.</p>
 <h2 id="step-4-evaluate-model-performance">Step 4: Evaluate Model Performance<a class="anchor" aria-label="anchor" href="#step-4-evaluate-model-performance"></a>
 </h2>
 <p>If <code>--split &lt; 1</code>, PONG2 holds out a validation set
-during training. Load the saved objects in R to evaluate:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://NormanLabUCD.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
+during training.</p>
+<div class="section level3">
+<h3 id="option-a-evaluate-from-the-terminal-recommended">Option A: Evaluate from the terminal (recommended)<a class="anchor" aria-label="anchor" href="#option-a-evaluate-from-the-terminal-recommended"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">pong2</span> evaluate <span class="dt">\</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="at">--model-dir</span> models/KIR3DL1 <span class="dt">\</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">--locus</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">--threshold</span> 0.5</span></code></pre></div>
+<p>This outputs haplotype accuracy, genotype accuracy, call rate, and
+per-allele sensitivity/specificity, and saves a summary CSV to the model
+directory.</p>
+</div>
+<div class="section level3">
+<h3 id="option-b-evaluate-in-r">Option B: Evaluate in R<a class="anchor" aria-label="anchor" href="#option-b-evaluate-in-r"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://normanlabucd.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Load saved objects</span></span>
 <span><span class="va">path</span>      <span class="op">&lt;-</span> <span class="st">"models/KIR3DL1"</span></span>
 <span><span class="va">mobj</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/get.html" class="external-link">get</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">path</span>, <span class="st">"_model.RData"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">test.geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/get.html" class="external-link">get</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">path</span>, <span class="st">"_test.RData"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">kirtab</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/get.html" class="external-link">get</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">path</span>, <span class="st">"_split.RData"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">model</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaModelfromObj.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
+<span><span class="va">model</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PONG2-internal.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Predict on test set</span></span>
-<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu">kirPredict</span><span class="op">(</span><span class="va">model</span>, <span class="va">test.geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/kirPredict.html">kirPredict</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">test.geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Evaluate using hlaCompareAllele</span></span>
-<span><span class="va">comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaCompareAllele.html">hlaCompareAllele</a></span><span class="op">(</span><span class="va">kirtab</span><span class="op">$</span><span class="va">validation</span>, <span class="va">pred</span>,</span>
+<span><span class="va">comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PONG2-internal.html">hlaCompareAllele</a></span><span class="op">(</span><span class="va">kirtab</span><span class="op">$</span><span class="va">validation</span>, <span class="va">pred</span>,</span>
 <span>                         allele.limit <span class="op">=</span> <span class="va">model</span>, call.threshold <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Overall accuracy</span></span>
-<span><span class="va">acc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">acc.haplo</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Haplotype accuracy: %.1f%%\n"</span>, <span class="va">acc</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Genotype accuracy:  %.1f%%\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">acc.geno</span>,  <span class="fl">3</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Call rate:          %.1f%%\n"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">call.rate</span>, <span class="fl">3</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Haplotype accuracy: %.1f%%\n"</span>, <span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">acc.haplo</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Genotype accuracy:  %.1f%%\n"</span>, <span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">acc.geno</span>  <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Call rate:          %.1f%%\n"</span>, <span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">call.rate</span>  <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Test samples:       %d\n"</span>,     <span class="va">comp</span><span class="op">$</span><span class="va">overall</span><span class="op">$</span><span class="va">n.samp</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Per-allele accuracy</span></span>
@@ -366,27 +442,28 @@ during training. Load the saved objects in R to evaluate:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span><span class="va">eval_summary</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">path</span>, <span class="st">"_eval_summary.csv"</span><span class="op">)</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
+</div>
 <div class="section level2">
 <h2 id="step-5-use-a-custom-model-for-imputation">Step 5: Use a Custom Model for Imputation<a class="anchor" aria-label="anchor" href="#step-5-use-a-custom-model-for-imputation"></a>
 </h2>
 <p>Once trained, use your model directly with
 <code>pong2 impute</code>:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="at">-i</span> chr19_target <span class="dt">\</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">-o</span> results/ <span class="dt">\</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">-m</span> models/KIR3DL1/KIR3DL1_model.RData</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">-i</span> chr19_target <span class="dt">\</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">-o</span> results/ <span class="dt">\</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">-m</span> models/KIR3DL1/KIR3DL1_model.RData</span></code></pre></div>
 <p>Or load it directly in R:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://NormanLabUCD.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://normanlabucd.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"models/KIR3DL1/KIR3DL1_model.RData"</span><span class="op">)</span></span>
-<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaModelfromObj.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
+<span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PONG2-internal.html">hlaModelFromObj</a></span><span class="op">(</span><span class="va">mobj</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/hlaBED2Geno.html">hlaBED2Geno</a></span><span class="op">(</span><span class="st">"chr19_target.bed"</span>, <span class="st">"chr19_target.fam"</span>, <span class="st">"chr19_target.bim"</span>,</span>
+<span><span class="va">geno</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PONG2-internal.html">hlaBED2Geno</a></span><span class="op">(</span><span class="st">"chr19_target.bed"</span>, <span class="st">"chr19_target.fam"</span>, <span class="st">"chr19_target.bim"</span>,</span>
 <span>                    import.chr <span class="op">=</span> <span class="st">"19"</span>, assembly <span class="op">=</span> <span class="st">"hg38"</span><span class="op">)</span></span>
-<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu">kirPredict</span><span class="op">(</span><span class="va">model</span>, <span class="va">geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/kirPredict.html">kirPredict</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">geno</span>, type <span class="op">=</span> <span class="st">"response+prob"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -456,8 +533,10 @@ during training. Load the saved objects in R to evaluate:</p>
 <ul>
 <li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html" class="external-link">PONG2-imputation</a>
 for the full imputation workflow</li>
-<li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-basic.html" class="external-link">PONG2
+<li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-basics.html" class="external-link">PONG2
 Basics</a> for installation and quick start</li>
+<li>Run the complete end-to-end workflow script: <a href="https://github.com/NormanLabUCD/PONG2/blob/main/example/full_workflow.sh" class="external-link">example/full_workflow.sh</a>
+</li>
 <li>Report issues: <a href="https://github.com/NormanLabUCD/PONG2/issues/new" class="external-link">Open a GitHub
 issue</a>
 </li>
@@ -476,7 +555,7 @@ issue</a>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Paul Norman.</p>
+<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Katherine M. Kichula, Paul J. Norman.</p>
 </div>
 
 <div class="pkgdown">

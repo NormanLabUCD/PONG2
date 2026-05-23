@@ -221,7 +221,7 @@ add it to your PATH:</p>
 <h3 id="verify-installation">Verify installation<a class="anchor" aria-label="anchor" href="#verify-installation"></a>
 </h3>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://NormanLabUCD.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://normanlabucd.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"PONG2"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">pong2</span> version</span></code></pre></div>
 <hr>
@@ -252,7 +252,7 @@ add it to your PATH:</p>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="at">--fill-missing</span> <span class="dt">\</span></span>
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
 <blockquote>
-<p>⚠️ <strong>Note:</strong> <code>--vcf</code> (pre-phased VCF) is the
+<p><strong>Note:</strong> <code>--vcf</code> (pre-phased VCF) is the
 <strong>only input</strong> required with
 <code>--fill-missing</code>.<br>
 PLINK files cannot hold phased haplotype data — the pipeline derives
@@ -269,6 +269,14 @@ everything from the VCF.</p>
 <span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
 <span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">-a</span> hg19 <span class="dt">\</span></span>
 <span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="evaluating-a-trained-model">4. Evaluating a trained model<a class="anchor" aria-label="anchor" href="#evaluating-a-trained-model"></a>
+</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">pong2</span> evaluate <span class="dt">\</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">--model-dir</span> models/custom <span class="dt">\</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">--locus</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">--threshold</span> 0.5</span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -278,17 +286,17 @@ everything from the VCF.</p>
 <div class="section level3">
 <h3 id="help">Help<a class="anchor" aria-label="anchor" href="#help"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span>              <span class="co"># General overview + list of commands</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> impute       <span class="co"># Detailed help for imputation</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> train        <span class="co"># Detailed help for training</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="ex">pong2</span> version             <span class="co"># Show version number</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span>              <span class="co"># General overview + list of commands</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> impute       <span class="co"># Detailed help for imputation</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="ex">pong2</span> <span class="at">--help</span> train        <span class="co"># Detailed help for training</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="ex">pong2</span> version             <span class="co"># Show version number</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level3">
 <h3 id="impute-command">
 <code>impute</code> command<a class="anchor" aria-label="anchor" href="#impute-command"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
 <div class="section level4">
 <h4 id="required-flags">Required flags<a class="anchor" aria-label="anchor" href="#required-flags"></a>
 </h4>
@@ -386,7 +394,7 @@ derived internally from VCF)</p>
 <h3 id="train-command">
 <code>train</code> command<a class="anchor" aria-label="anchor" href="#train-command"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="ex">pong2</span> train <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
 <div class="section level4">
 <h4 id="required-flags-1">Required flags<a class="anchor" aria-label="anchor" href="#required-flags-1"></a>
 </h4>
@@ -492,6 +500,52 @@ HG00099,KIR3DL1*020,KIR3DL1*00302</code></pre>
 <hr>
 </div>
 </div>
+<div class="section level3">
+<h3 id="evaluate-command">
+<code>evaluate</code> command<a class="anchor" aria-label="anchor" href="#evaluate-command"></a>
+</h3>
+<p>Evaluate a trained model against the held-out validation set directly
+from the terminal:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="ex">pong2</span> evaluate <span class="pp">[</span><span class="ss">options</span><span class="pp">]</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="21%">
+<col width="46%">
+<col width="32%">
+</colgroup>
+<thead><tr class="header">
+<th>Flag</th>
+<th>Description</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>--model-dir</code></td>
+<td>Directory containing trained model files</td>
+<td><code>models/KIR3DL1</code></td>
+</tr>
+<tr class="even">
+<td><code>-l, --locus</code></td>
+<td>KIR locus to evaluate</td>
+<td><code>KIR3DL1</code></td>
+</tr>
+<tr class="odd">
+<td><code>--threshold</code></td>
+<td>Minimum confidence threshold for calls</td>
+<td><code>0.5</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="ex">pong2</span> evaluate <span class="dt">\</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  <span class="at">--model-dir</span> models/KIR3DL1 <span class="dt">\</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="at">--locus</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="at">--threshold</span> 0.5</span></code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> Requires <code>--split &lt; 1</code> during
+training to generate held-out test data.</p>
+</blockquote>
+<hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="pre-phasing-the-kir-region">Pre-phasing the KIR Region<a class="anchor" aria-label="anchor" href="#pre-phasing-the-kir-region"></a>
@@ -501,26 +555,26 @@ HG00099,KIR3DL1*020,KIR3DL1*00302</code></pre>
 <div class="section level3">
 <h3 id="hg19">hg19<a class="anchor" aria-label="anchor" href="#hg19"></a>
 </h3>
-<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55000000 <span class="dt">\</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55000000 <span class="dt">\</span></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="hg38">hg38<a class="anchor" aria-label="anchor" href="#hg38"></a>
 </h3>
-<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg38.txt.gz <span class="dt">\</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>54000000 <span class="dt">\</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55000000</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg38.txt.gz <span class="dt">\</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>54000000 <span class="dt">\</span></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55000000</span></code></pre></div>
 <blockquote>
 <p>Eagle2 outputs a phased VCF (<code>chr19.phased.vcf.gz</code>) which
 is passed directly to <code>--vcf</code>.</p>
@@ -545,12 +599,12 @@ Project (1KGP) reference panel in the KIR region.</p>
 <tbody>
 <tr class="odd">
 <td>≥ 50%</td>
-<td>✅ Pass</td>
+<td>Pass</td>
 <td>Proceed with PONG2 directly</td>
 </tr>
 <tr class="even">
 <td>&lt; 50%</td>
-<td>⚠️ Fail</td>
+<td>Fail</td>
 <td>Run Eagle2 + minimac4 pre-imputation first</td>
 </tr>
 </tbody>
@@ -559,24 +613,24 @@ Project (1KGP) reference panel in the KIR region.</p>
 <div class="section level3">
 <h3 id="option-a-local-pre-imputation-built-in-quick">Option A: Local pre-imputation (built-in, quick)<a class="anchor" aria-label="anchor" href="#option-a-local-pre-imputation-built-in-quick"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Step 1: Pre-phase with Eagle2</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55000000 <span class="dt">\</span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a></span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a><span class="co"># Step 2: Run PONG2 with --fill-missing (VCF only — no -i needed)</span></span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>  <span class="at">--vcf</span> chr19.phased.vcf.gz <span class="dt">\</span></span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>  <span class="at">-o</span> results/imputed <span class="dt">\</span></span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
-<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>  <span class="at">-a</span> hg19 <span class="dt">\</span></span>
-<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>  <span class="at">--fill-missing</span> <span class="dt">\</span></span>
-<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Step 1: Pre-phase with Eagle2</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="ex">eagle</span> <span class="dt">\</span></span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>  <span class="at">--bfile</span><span class="op">=</span>chr19 <span class="dt">\</span></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>  <span class="at">--geneticMapFile</span><span class="op">=</span>genetic_map_hg19.txt.gz <span class="dt">\</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a>  <span class="at">--outPrefix</span><span class="op">=</span>chr19.phased <span class="dt">\</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>  <span class="at">--chrom</span><span class="op">=</span>19 <span class="dt">\</span></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a>  <span class="at">--numThreads</span><span class="op">=</span>20 <span class="dt">\</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>  <span class="at">--bpStart</span><span class="op">=</span>55000000 <span class="dt">\</span></span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>  <span class="at">--bpEnd</span><span class="op">=</span>55400000</span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a></span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co"># Step 2: Run PONG2 with --fill-missing (VCF only — no -i needed)</span></span>
+<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
+<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a>  <span class="at">--vcf</span> chr19.phased.vcf.gz <span class="dt">\</span></span>
+<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a>  <span class="at">-o</span> results/imputed <span class="dt">\</span></span>
+<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a>  <span class="at">-a</span> hg19 <span class="dt">\</span></span>
+<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a>  <span class="at">--fill-missing</span> <span class="dt">\</span></span>
+<span id="cb18-18"><a href="#cb18-18" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="option-b-external-pre-imputation-recommended-for-highest-accuracy">Option B: External pre-imputation (recommended for highest
@@ -594,24 +648,24 @@ Server</a> or <a href="https://imputation.biodatacatalyst.nhlbi.nih.gov/" class=
 </ul>
 <p><strong>Step 3:</strong> Download imputed VCF and convert to
 PLINK:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="ex">plink2</span> <span class="dt">\</span></span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  <span class="at">--vcf</span> imputed.dose.vcf.gz dosage=DS <span class="dt">\</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="at">--make-bed</span> <span class="dt">\</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  <span class="at">--out</span> imputed_chr19</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="ex">plink2</span> <span class="dt">\</span></span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>  <span class="at">--vcf</span> imputed.dose.vcf.gz dosage=DS <span class="dt">\</span></span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>  <span class="at">--make-bed</span> <span class="dt">\</span></span>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>  <span class="at">--out</span> imputed_chr19</span></code></pre></div>
 <p><strong>Step 4:</strong> Run PONG2:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  <span class="at">-i</span> imputed_chr19 <span class="dt">\</span></span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>  <span class="at">-o</span> results/final <span class="dt">\</span></span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>  <span class="at">--filter</span> 0.005</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="dt">\</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>  <span class="at">-i</span> imputed_chr19 <span class="dt">\</span></span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>  <span class="at">-o</span> results/final <span class="dt">\</span></span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a>  <span class="at">-l</span> KIR3DL1 <span class="dt">\</span></span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a>  <span class="at">-a</span> hg38 <span class="dt">\</span></span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>  <span class="at">--filter</span> 0.005</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="option-c-force-imputation-not-recommended">Option C: Force imputation (not recommended)<a class="anchor" aria-label="anchor" href="#option-c-force-imputation-not-recommended"></a>
 </h3>
 <p>Proceed despite low SNP match rate — use only when you understand the
 implications:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> chr19 <span class="at">-o</span> results <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19 <span class="at">--force</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="ex">pong2</span> impute <span class="at">-i</span> chr19 <span class="at">-o</span> results <span class="at">-l</span> KIR3DL1 <span class="at">-a</span> hg19 <span class="at">--force</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -623,6 +677,8 @@ implications:</p>
 for detailed imputation workflow</li>
 <li>See vignette <a href="https://normanlabucd.github.io/PONG2/articles/PONG2-training.html" class="external-link">PONG2-training</a>
 for custom model training</li>
+<li>Run the complete end-to-end workflow script: <a href="https://github.com/NormanLabUCD/PONG2/blob/main/example/full_workflow.sh" class="external-link">example/full_workflow.sh</a>
+</li>
 <li>Report issues: <a href="https://github.com/NormanLabUCD/PONG2/issues/new" class="external-link">Open a GitHub
 issue</a>
 </li>
@@ -640,7 +696,7 @@ issue</a>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Paul Norman.</p>
+<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Katherine M. Kichula, Paul J. Norman.</p>
 </div>
 
 <div class="pkgdown">

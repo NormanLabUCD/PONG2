@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pulling Out NK cell Genomics (PONG2) -- KIR Genotype Imputation with Attribute Bagging • PONG2</title>
+<title>KIR Genotype Imputation and Model Training from SNP Array Data • PONG2</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="bootstrap-toc.css">
 <script src="bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
-<script src="pkgdown.js"></script><meta property="og:title" content="Pulling Out NK cell Genomics (PONG2) -- KIR Genotype Imputation with Attribute Bagging">
-<meta property="og:description" content="PONG2 is a modification of HIBAG designed to impute KIR alleles from chromosome 19 SNP data. It uses attribute bagging and an ensemble classifier method with haplotype inference for SNPs and KIR types. Models are built from global populations in the 1000 Genomes Project. Please note: For best compatibility, use R version &lt; 4.0 or ensure Rcpp is up-to-date.">
+<script src="pkgdown.js"></script><meta property="og:title" content="KIR Genotype Imputation and Model Training from SNP Array Data">
+<meta property="og:description" content="A scalable and accurate tool for Killer-cell Immunoglobulin-like Receptor (KIR) genotype imputation directly from SNP array data using supervised machine learning models trained across five continental ancestry groups. Uses attribute bagging and an ensemble classifier method with haplotype inference for SNPs and KIR types. Models are built from global populations in the 1000 Genomes Project and validated across diverse biobank cohorts.">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -83,7 +83,7 @@
 <div class="section level1">
 <div class="page-header"><h1 id="pong2--kir-genotype-imputation--model-training">PONG2 – KIR Genotype Imputation &amp; Model Training<a class="anchor" aria-label="anchor" href="#pong2--kir-genotype-imputation--model-training"></a>
 </h1></div>
-<p><a href="https://www.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&amp;logoColor=white" alt="R"></a> <a href="https://www.gnu.org/licenses/gpl-3.0" class="external-link"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a> <a href="https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0" class="external-link"><img src="https://img.shields.io/github/v/release/NormanLabUCD/PONG2" alt="GitHub release"></a></p>
+<p><a href="https://www.r-project.org/" class="external-link"><img src="https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&amp;logoColor=white" alt="R"></a> <a href="https://cran.r-project.org/web/licenses/GPL-3" class="external-link"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a> <a href="https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0" class="external-link"><img src="https://img.shields.io/github/v/release/NormanLabUCD/PONG2" alt="GitHub release"></a></p>
 <p><strong>PONG2</strong> is an R package with C++ acceleration (via Rcpp) for <strong>high-accuracy imputation</strong> and <strong>training</strong> of Killer-cell Immunoglobulin-like Receptor (<strong>KIR</strong>) genotypes from SNP array data in the KIR locus (chromosome 19q13.4).</p>
 <p>It is optimized for population genetics, immunogenetics, and large-scale biobank studies requiring reliable KIR allele calls across diverse ancestries.</p>
 <p><strong>Main CLI commands:</strong> - <code>impute</code> – predict KIR alleles from target PLINK files - <code>train</code> – build a new prediction model from reference genotypes + known KIR calls</p>
@@ -486,12 +486,12 @@
 <tbody>
 <tr>
 <td>≥ 50%</td>
-<td>✅ Pass</td>
+<td>Pass: Pass</td>
 <td>Proceed with PONG2 directly</td>
 </tr>
 <tr>
 <td>&lt; 50%</td>
-<td>⚠️ Fail</td>
+<td>Warning: Fail</td>
 <td>Run Eagle2 + minimac4 pre-imputation first</td>
 </tr>
 </tbody>
@@ -521,7 +521,7 @@
 <span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>  <span class="at">--fill-missing</span> <span class="dt">\</span></span>
 <span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>  <span class="at">-t</span> 20</span></code></pre></div>
 <blockquote>
-<p>⚠️ <strong>Note:</strong> A pre-phased VCF (<code>--vcf</code>) is required with <code>--fill-missing</code>.</p>
+<p>Warning: <strong>Note:</strong> A pre-phased VCF (<code>--vcf</code>) is required with <code>--fill-missing</code>.</p>
 </blockquote>
 </div>
 <div class="section level3">
@@ -696,7 +696,7 @@
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
 <p>PONG2 is licensed under the <strong>GNU General Public License v3.0</strong> (GPL-3.0).</p>
-<p>You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See <a href="LICENSE">LICENSE</a> or the <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" class="external-link">GNU GPL-3.0 page</a> for details.</p>
+<p>You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See <a href="https://cran.r-project.org/web/licenses/GPL-3" class="external-link">LICENSE</a> or the <a href="https://cran.r-project.org/web/licenses/GPL-3" class="external-link">GNU GPL-3.0 page</a> for details.</p>
 <hr>
 </div>
 <div class="section level2">
@@ -751,7 +751,8 @@
 <ul class="list-unstyled">
 <li>Suraju A. Sadeeq <br><small class="roles"> Author, maintainer </small>   </li>
 <li>Laura A. Leaton <br><small class="roles"> Author </small>   </li>
-<li>Paul Norman <br><small class="roles"> Author </small>   </li>
+<li>Katherine M. Kichula <br><small class="roles"> Author </small>   </li>
+<li>Paul J. Norman <br><small class="roles"> Author </small>   </li>
 </ul>
 </div>
 
@@ -763,7 +764,7 @@
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Paul Norman.</p>
+<p>Developed by Suraju A. Sadeeq, Laura A. Leaton, Katherine M. Kichula, Paul J. Norman.</p>
 </div>
 
 <div class="pkgdown">
