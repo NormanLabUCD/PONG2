@@ -2109,7 +2109,7 @@ kirParallelAttrBagging <- function(cl, hla, snp, auto.save="",
 
 	if (!is.null(cl))
 	{
-	    if (!require(parallel, warn.conflicts=FALSE))
+	    if (!requireNamespace("parallel", quietly=TRUE))
 			stop("The `parallel' package should be installed.")
 	}
 
@@ -2556,10 +2556,9 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         rv <- parallel::clusterApply(cl = cl, parallel::splitIndices(n.samp,
             length(cl)), fun = function(i, mobj, snp, type, vote) {
             if (length(i) > 0L) {
-                library(HIBAG)
-                m <- hlaModelFromObj(mobj)
-                on.exit(hlaClose(m))
-                hlaPredict(m, snp[, i], type = type, vote = vote,
+                m <- HIBAG::hlaModelFromObj(mobj)
+                on.exit(HIBAG::hlaClose(m))
+                HIBAG::hlaPredict(m, snp[, i], type = type, vote = vote,
                   verbose = FALSE)
             }
             else NULL
@@ -2844,6 +2843,54 @@ hlaSubModelObj <- function(obj, n)
 	stopifnot(inherits(obj, "hlaAttrBagObj"))
 	obj$classifiers <- obj$classifiers[1:n]
 	return(obj)
+}
+
+
+
+
+#######################################################################
+# Get or download PONG2 pre-trained model file
+# Downloads from GitHub release on first use if not found locally
+#
+
+.get_model_path <- function() {
+  # Check package extdata first — already present or previously downloaded
+  pkg_path <- system.file("extdata", "model", "pong2_models.rds", package = "PONG2")
+  if (file.exists(pkg_path)) return(pkg_path)
+
+  # Define download destination
+  pkg_dir    <- system.file(package = "PONG2")
+  model_dir  <- file.path(pkg_dir, "extdata", "model")
+  model_file <- file.path(model_dir, "pong2_models.rds")
+
+  # Create directory if it does not exist
+  if (!dir.exists(model_dir)) {
+    dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
+    if (!dir.exists(model_dir))
+      stop("Failed to create model directory: ", model_dir)
+  }
+
+  # Download model file from GitHub release
+  message("Downloading PONG2 pre-trained models (one-time setup ~11MB)...")
+  tryCatch({
+    download.file(
+      "https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds",
+      model_file, mode = "wb", quiet = FALSE
+    )
+    message("Models saved to: ", model_file)
+  }, error = function(e) {
+    stop(
+      "Failed to download PONG2 models: ", e$message, "
+",
+"Please download manually from:
+",
+"  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds
+",
+"and save to: ", model_dir
+    )
+  })
+
+  return(model_file)
 }
 
 
@@ -3632,7 +3679,7 @@ setup_PONG2 <- function() {
 #' @export
 .onAttach <- function(lib, pkg)
 {
-  message("** initializing environment")
+  packageStartupMessage("** initializing environment")
 	rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
 	#registerS3method("predict", "hlaAttrBagClass", predict.hlaAttrBagClass)
 	# information

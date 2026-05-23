@@ -10,3 +10,7 @@ inst/extdata/model
 .RData
 .Rhistory
 
+PONG2.Rcheck/
+output/
+src/*.o
+src/*.so

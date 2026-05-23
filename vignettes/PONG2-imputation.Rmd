@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE   # Examples are shown but not executed during vignette build
+  eval = FALSE
 )
 ```
 
@@ -91,13 +91,17 @@ panel in the KIR region and report the match rate.
 > **NOTE: KIR Region SNP Overlap between input data and 1KGP**
 >
 > Overlap rate is computed between your input data and the 1000 Genomes Project (1KGP)
-> reference panel in the KIR region (chr19:54,600,000–55,200,000 for hg38;
-> chr19:55,000,000–55,400,000 for hg19).
+> reference panel in the KIR region:
+>
+> | Assembly | KIR Region Coordinates |
+> |----------|----------------------|
+> | hg19 | chr19:55,000,000–55,400,000 |
+> | hg38 | chr19:54,000,000–55,000,000 |
 >
 > | Overlap Rate | Status | Action |
 > |-------------|--------|--------|
-> | ≥ 50% | ✅ Pass | Proceed with PONG2 directly |
-> | < 50% | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+> | ≥ 50% | Pass | Proceed with PONG2 directly |
+> | < 50% | Fail | Run Eagle2 + pre-imputation first |
 
 If your match rate is sufficient (≥ 50%), PONG2 will proceed automatically.
 If not, use one of the pre-imputation strategies below.
@@ -144,7 +148,7 @@ Eagle2 outputs a phased VCF: `chr19.phased.vcf.gz`
 
 Pass the pre-phased VCF directly to PONG2 using `--vcf` and `--fill-missing`.
 
-> ⚠️ **Important:** `--vcf` is the **only input** required with `--fill-missing`.  
+> **Important:** `--vcf` is the **only input** required with `--fill-missing`.  
 > PLINK files cannot hold phased haplotype data — the pipeline derives everything
 > from the VCF internally. Do **not** supply `-i` together with `--fill-missing`.
 
@@ -164,6 +168,7 @@ pong2 impute \
 ### Option B: External Pre-imputation (recommended for highest accuracy)
 
 Pre-impute your chr19 data using a public server before running PONG2.
+This is the approach used in the PONG2 manuscript.
 
 #### Step B1: Export phased VCF
 
@@ -271,6 +276,7 @@ as a single output file — no action required from the user.
 
 - See vignette [PONG2-training](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html)
   for custom model training
+- Run the complete end-to-end workflow script: [example/full_workflow.sh](https://github.com/NormanLabUCD/PONG2/blob/main/example/full_workflow.sh)
 - Report issues: [Open a GitHub issue](https://github.com/NormanLabUCD/PONG2/issues/new)
 
 Happy KIR imputation! 🧬

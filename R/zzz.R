@@ -1,20 +1,7 @@
+#' @importFrom graphics abline text
+#' @importFrom stats cor median predict sd
+#' @importFrom utils read.table write.table
 #' @useDynLib PONG2
-NULL
 #' @exportPattern ^[^\\.]
-NULL
-
-#' @export kirPredict
-NULL
-
-#' @export kirParallelAttrBagging
-NULL
-
-
 #' @export predict.hlaAttrBagClass
 NULL
-
-
-
-
-
-

@@ -8,7 +8,7 @@
 # PART 1: IMPUTATION — Predict KIR alleles from existing models
 # =================================================================================
 
-# Step 1: Extract chr19 from full genome
+# Step 1: Extract chr19 from full genome or use sample chr19 in example folder
 plink2 \
   --bfile full_genome \
   --chr 19 \

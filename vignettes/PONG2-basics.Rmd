@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE   # most code is examples — not executed during vignette build
+  eval = FALSE
 )
 ```
 
@@ -151,7 +151,7 @@ pong2 impute \
   -t 20
 ```
 
-> ⚠️ **Note:** `--vcf` (pre-phased VCF) is the **only input** required with `--fill-missing`.  
+> **Note:** `--vcf` (pre-phased VCF) is the **only input** required with `--fill-missing`.  
 > PLINK files cannot hold phased haplotype data — the pipeline derives everything from the VCF.
 
 ### 3. Training a new model
@@ -164,6 +164,15 @@ pong2 train \
   -l KIR3DL1 \
   -a hg19 \
   -t 20
+```
+
+### 4. Evaluating a trained model
+
+```bash
+pong2 evaluate \
+  --model-dir models/custom \
+  --locus KIR3DL1 \
+  --threshold 0.5
 ```
 
 ---
@@ -252,6 +261,31 @@ HG00099,KIR3DL1*020,KIR3DL1*00302
 
 ---
 
+### `evaluate` command
+
+Evaluate a trained model against the held-out validation set directly from the terminal:
+
+```bash
+pong2 evaluate [options]
+```
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--model-dir` | Directory containing trained model files | `models/KIR3DL1` |
+| `-l, --locus` | KIR locus to evaluate | `KIR3DL1` |
+| `--threshold` | Minimum confidence threshold for calls | `0.5` |
+
+```bash
+pong2 evaluate \
+  --model-dir models/KIR3DL1 \
+  --locus KIR3DL1 \
+  --threshold 0.5
+```
+
+> **Note:** Requires `--split < 1` during training to generate held-out test data.
+
+---
+
 ## Pre-phasing the KIR Region
 
 Pre-phasing is **required** before using `--fill-missing`. Use Eagle2 to phase your chr19 data:
@@ -294,8 +328,8 @@ eagle \
 >
 > | Overlap Rate | Status | Action |
 > |-------------|--------|--------|
-> | ≥ 50% | ✅ Pass | Proceed with PONG2 directly |
-> | < 50% | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+> | ≥ 50% | Pass | Proceed with PONG2 directly |
+> | < 50% | Fail | Run Eagle2 + minimac4 pre-imputation first |
 
 ### Option A: Local pre-imputation (built-in, quick)
 
@@ -365,4 +399,5 @@ pong2 impute -i chr19 -o results -l KIR3DL1 -a hg19 --force
 
 - See vignette [PONG2-imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html) for detailed imputation workflow
 - See vignette [PONG2-training](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html) for custom model training
+- Run the complete end-to-end workflow script: [example/full_workflow.sh](https://github.com/NormanLabUCD/PONG2/blob/main/example/full_workflow.sh)
 - Report issues: [Open a GitHub issue](https://github.com/NormanLabUCD/PONG2/issues/new)

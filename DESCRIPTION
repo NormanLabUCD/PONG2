@@ -1,37 +1,43 @@
 Package: PONG2
 Type: Package
-Title: Pulling Out NK cell Genomics (PONG2) -- KIR Genotype Imputation with Attribute Bagging
+Title: KIR Genotype Imputation and Model Training from SNP Array Data
 Version: 1.0.0
-Date: 2026-02-18
-Description: PONG2 is a modification of HIBAG designed to impute KIR alleles from chromosome 19 SNP data.  
-  It uses attribute bagging and an ensemble classifier method with haplotype inference for SNPs and KIR types.  
-  Models are built from global populations in the 1000 Genomes Project.  
-  Please note: For best compatibility, use R version < 4.0 or ensure Rcpp is up-to-date.
-Authors@R: c(person("Suraju A.", "Sadeeq", email = "suraju.sadeeq@cuanschutz.edu", role = c("aut", "cre")),
-             person("Laura A.", "Leaton", role = "aut"),
-             person("Paul", "Norman", role = "aut"))
+Date: 2026-05-22
+Description: A scalable and accurate tool for Killer-cell Immunoglobulin-like
+    Receptor (KIR) genotype imputation directly from SNP array data using
+    supervised machine learning models trained across five continental ancestry
+    groups. Uses attribute bagging and an ensemble classifier method with
+    haplotype inference for SNPs and KIR types. Models are built from global
+    populations in the 1000 Genomes Project and validated across diverse
+    biobank cohorts.
+Authors@R: c(
+    person("Suraju A.", "Sadeeq", email = "suraju.sadeeq@cuanschutz.edu",
+           role = c("aut", "cre")),
+    person("Laura A.", "Leaton", role = "aut"),
+    person("Katherine M.", "Kichula", role = "aut"),
+    person("Paul J.", "Norman", role = "aut"))
 Maintainer: Suraju A. Sadeeq <suraju.sadeeq@cuanschutz.edu>
 License: GPL-3
-URL: https://NormanLabUCD.github.io/PONG2/
+URL: https://normanlabucd.github.io/PONG2/, https://github.com/NormanLabUCD/PONG2
 BugReports: https://github.com/NormanLabUCD/PONG2/issues
-Depends: 
-    R (>= 3.5.0)
-Imports: 
-    Rcpp
-LinkingTo: 
-    Rcpp
-Suggests: 
+Depends:
+    R (>= 4.0.0)
+Imports:
+    parallel,
+    graphics,
+    stats,
+    utils
+LinkingTo:
+    Rcpp,
+    RcppParallel
+Suggests:
+    HIBAG,
     knitr,
     rmarkdown,
     pkgdown,
-    parallel,
     testthat
 VignetteBuilder: knitr
-LazyData: true
-LazyDataCompression: xz
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-SystemRequirements: plink2
-Config/pkgdown:
-    url: URL: https://github.io
+SystemRequirements: PLINK2 (>= 2.0), minimac4 (>= 4.1.6, optional)

@@ -1,7 +1,7 @@
 # PONG2 – KIR Genotype Imputation & Model Training
 
 [![R](https://img.shields.io/badge/R-%3E%3D%204.0-blue?logo=r&logoColor=white)](https://www.r-project.org/)
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://cran.r-project.org/web/licenses/GPL-3)
 [![GitHub release](https://img.shields.io/github/v/release/NormanLabUCD/PONG2)](https://github.com/NormanLabUCD/PONG2/releases/tag/v1.0.0)
 
 **PONG2** is an R package with C++ acceleration (via Rcpp) for **high-accuracy imputation** and **training** of Killer-cell Immunoglobulin-like Receptor (**KIR**) genotypes from SNP array data in the KIR locus (chromosome 19q13.4).
@@ -234,8 +234,8 @@ pong2 train --bfile example/chr19 --kfile example/kir_call.csv --output test --l
 >
 > | Overlap Rate | Status | Action |
 > |-------------|--------|--------|
-> | ≥ 50% | ✅ Pass | Proceed with PONG2 directly |
-> | < 50% | ⚠️ Fail | Run Eagle2 + minimac4 pre-imputation first |
+> | ≥ 50% | Pass: Pass | Proceed with PONG2 directly |
+> | < 50% | Warning: Fail | Run Eagle2 + minimac4 pre-imputation first |
 
 If your SNP matching rate is below 50%, PONG2 provides two strategies:
 
@@ -264,7 +264,7 @@ pong2 impute \
   -t 20
 ```
 
-> ⚠️ **Note:** A pre-phased VCF (`--vcf`) is required with `--fill-missing`.
+> Warning: **Note:** A pre-phased VCF (`--vcf`) is required with `--fill-missing`.
 
 ### Option B: External pre-imputation (recommended for highest accuracy)
 
@@ -323,7 +323,7 @@ Pre-impute your chr19 data using a public imputation server before running PONG2
 
 PONG2 is licensed under the **GNU General Public License v3.0** (GPL-3.0).
 
-You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See [LICENSE](LICENSE) or the [GNU GPL-3.0 page](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
+You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See [LICENSE](https://cran.r-project.org/web/licenses/GPL-3) or the [GNU GPL-3.0 page](https://cran.r-project.org/web/licenses/GPL-3) for details.
 
 ---
 

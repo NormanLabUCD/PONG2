@@ -47,9 +47,8 @@ modelObject <- function(locus, filter = 0.005, assembly = c("hg38", "hg19")) {
          " — received: ", filter)
   }
 
-  rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
-  object    <- readRDS(rds_path)
-  getObject <- get(object$models)
+  rds_path  <- .get_model_path()
+  getObject <- readRDS(rds_path)
 
   filter_key <- ifelse(filter == 0.01, "allele_fileter_001", "allele_fileter_0005")
   mobj <- getObject[[assembly]][[filter_key]][[locus]]

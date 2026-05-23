@@ -1,0 +1,15 @@
+^\.github$
+^\.gitignore$
+^LICENSE$
+^\.Rhistory$
+^.*\.Rproj$
+^\.Rproj\.user$
+^doc$
+^Meta$
+^docs$
+^example$
+^.*\.pdf$
+
+^output$
+^CRAN-SUBMISSION$
+^cran-comments\.md$

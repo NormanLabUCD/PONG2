@@ -51,7 +51,49 @@ Training is useful when:
 ### 1a. Reference genotypes (`--bfile`)
 
 PLINK bed/bim/fam files containing SNPs in the KIR locus (chr19).
-Extract chr19 from your full-genome PLINK files to reduce size:
+
+#### Using the 1000 Genomes Project (1KGP) as reference panel
+
+The 1KGP is the recommended reference panel for training PONG2 models. Choose the
+appropriate panel for your genome assembly:
+
+| Assembly | 1KGP Reference Panel | Samples | URL |
+|----------|---------------------|---------|-----|
+| hg19 | Phase 3 | 2,504 | https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ |
+| hg38 | High Coverage | 3,202 | https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/ |
+
+Download and extract the KIR region:
+
+```bash
+# ── hg19: 1KGP Phase 3 ──────────────────────────────────────────────────────
+wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/\
+ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+
+plink2 \
+  --vcf ALL.chr19.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz \
+  --chr 19 \
+  --from-bp 55000000 \
+  --to-bp 55400000 \
+  --make-bed \
+  --out reference_chr19_hg19
+
+# ── hg38: 1KGP High Coverage ─────────────────────────────────────────────────
+wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/\
+1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/\
+1kGP_high_coverage_Illumina.chr19.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+
+plink2 \
+  --vcf 1kGP_high_coverage_Illumina.chr19.filtered.SNV_INDEL_SV_phased_panel.vcf.gz \
+  --chr 19 \
+  --from-bp 54000000 \
+  --to-bp 55000000 \
+  --make-bed \
+  --out reference_chr19_hg38
+```
+
+#### Using your own reference dataset
+
+Extract chr19 from your full-genome PLINK files:
 
 ```bash
 plink2 --bfile full_reference --chr 19 --make-bed --out reference_chr19
@@ -139,8 +181,21 @@ After training completes, the output directory (`-o`) will contain:
 
 ## Step 4: Evaluate Model Performance
 
-If `--split < 1`, PONG2 holds out a validation set during training. Load the saved
-objects in R to evaluate:
+If `--split < 1`, PONG2 holds out a validation set during training.
+
+### Option A: Evaluate from the terminal (recommended)
+
+```bash
+pong2 evaluate \
+  --model-dir models/KIR3DL1 \
+  --locus KIR3DL1 \
+  --threshold 0.5
+```
+
+This outputs haplotype accuracy, genotype accuracy, call rate, and per-allele
+sensitivity/specificity, and saves a summary CSV to the model directory.
+
+### Option B: Evaluate in R
 
 ```r
 library(PONG2)
@@ -160,10 +215,9 @@ comp <- hlaCompareAllele(kirtab$validation, pred,
                          allele.limit = model, call.threshold = 0.5)
 
 # Overall accuracy
-acc <- round(comp$overall$acc.haplo, digits = 3)
-cat(sprintf("Haplotype accuracy: %.1f%%\n", acc * 100))
-cat(sprintf("Genotype accuracy:  %.1f%%\n", round(comp$overall$acc.geno,  3) * 100))
-cat(sprintf("Call rate:          %.1f%%\n", round(comp$overall$call.rate, 3) * 100))
+cat(sprintf("Haplotype accuracy: %.1f%%\n", comp$overall$acc.haplo * 100))
+cat(sprintf("Genotype accuracy:  %.1f%%\n", comp$overall$acc.geno  * 100))
+cat(sprintf("Call rate:          %.1f%%\n", comp$overall$call.rate  * 100))
 cat(sprintf("Test samples:       %d\n",     comp$overall$n.samp))
 
 # Per-allele accuracy
@@ -231,8 +285,9 @@ pred <- kirPredict(model, geno, type = "response+prob")
 
 - See vignette [PONG2-imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html)
   for the full imputation workflow
-- See vignette [PONG2 Basics](https://normanlabucd.github.io/PONG2/articles/PONG2-basic.html)
+- See vignette [PONG2 Basics](https://normanlabucd.github.io/PONG2/articles/PONG2-basics.html)
   for installation and quick start
+- Run the complete end-to-end workflow script: [example/full_workflow.sh](https://github.com/NormanLabUCD/PONG2/blob/main/example/full_workflow.sh)
 - Report issues: [Open a GitHub issue](https://github.com/NormanLabUCD/PONG2/issues/new)
 
 Happy KIR model training! 🧬

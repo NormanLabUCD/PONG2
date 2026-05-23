@@ -63,9 +63,8 @@ if (!is.null(model_path)) {
   # ── Built-in pre-trained model ────────────────────────────────────────────
 
   # Load model object once
-  rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
-  object    <- readRDS(rds_path)
-  getObject <- get(object$models)
+  rds_path  <- .get_model_path()
+  getObject <- readRDS(rds_path)
 
   # Validate filter
   valid_filters <- c(0, 0.01, 0.005)
