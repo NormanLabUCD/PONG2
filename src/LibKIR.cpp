@@ -1805,9 +1805,13 @@ void CVariableSelection::Search(CBaseSampling &VarSampling,
 			// show ...
 			if (verbose_detail)
 			{
+				//Rprintf("\t%-3d, added snp: %d, loss: %g, out-of-bag acc: %0.2f%%, # of haplo: %d\n",
+				//	OutSNPIndex.size(), OutSNPIndex.back()+1,
+				//	Global_Min_Loss, Global_Max_OutOfBagAcc*100, OutHaplo.TotalNumOfHaplo());
+
 				Rprintf("\t%-3d, added snp: %d, loss: %g, out-of-bag acc: %0.2f%%, # of haplo: %d\n",
-					OutSNPIndex.size(), OutSNPIndex.back()+1,
-					Global_Min_Loss, Global_Max_OutOfBagAcc*100, OutHaplo.TotalNumOfHaplo());
+            (int)OutSNPIndex.size(), OutSNPIndex.back()+1,
+            Global_Min_Loss, Global_Max_OutOfBagAcc*100, OutHaplo.TotalNumOfHaplo());
 			}
 		} else {
 			// only keep "n_tmp - m" predictors
