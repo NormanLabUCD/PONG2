@@ -92,6 +92,12 @@ if (!require("remotes", quietly = TRUE)) install.packages("remotes")
 remotes::install_github("NormanLabUCD/PONG2")
 ```
 
+### From CRAN
+
+```r
+install.packages("PONG2")
+```
+
 ### From source tarball
 
 Download [PONG2_1.0.0.tar.gz](https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/PONG2_1.0.0.tar.gz) then:
@@ -104,23 +110,36 @@ R CMD INSTALL PONG2_1.0.0.tar.gz
 R CMD INSTALL --library=/your/custom/path PONG2_1.0.0.tar.gz
 ```
 
-### CLI Setup
+---
 
-After installation, make the `pong2` script executable and add it to your PATH:
+## CLI Setup
+
+**After installation**, add the `pong2` command-line tool to your terminal PATH.
+Run the following once in your terminal:
 
 ```bash
-# Locate the pong2 script
+# Step 1: Get the pong2 script location automatically
 PONG2_BIN=$(Rscript -e "cat(system.file('scripts', 'pong2', package='PONG2'))")
 
-# Make executable
+# Step 2: Make executable
 chmod +x "$PONG2_BIN"
 
-# Add to PATH (add this to your ~/.bashrc or ~/.bash_profile)
+# Step 3: Add to PATH for current session
 export PATH="$(dirname $PONG2_BIN):$PATH"
 
-# Verify installation
-pong2 version
+# Step 4: Make permanent — add to ~/.bashrc (Linux) or ~/.bash_profile (macOS)
+echo "export PATH=\"$(dirname $PONG2_BIN):\$PATH\"" >> ~/.bashrc
+source ~/.bashrc
+
+# Step 5: Verify
+pong2 --help
 ```
+
+> **HPC users:** Add the `export PATH` line to your job submission script or
+> `~/.bashrc` on the cluster to ensure `pong2` is available in all sessions.
+
+> **Note:** You only need to do this once. After adding to `~/.bashrc`,
+> `pong2` will be available in all future terminal sessions automatically.
 
 ---
 
@@ -210,12 +229,10 @@ pong2 train [options]
 
 The KIR file (`--kfile`) must be a CSV with the following structure:
 
-
 | Sample | KIR3DL1_h1 | KIR3DL1_h2 | KIR2DL1_h1 | KIR2DL1_h2 |
 |--------|------------|------------|------------|------------|
 | `HG00096` | `KIR3DL1*001` | `KIR3DL1*002` | `KIR2DL1*00302` | `KIR2DL1*00201` |
 | `HG00097` | `KIR3DL1*005` | `KIR3DL1*015` | `KIR2DL1*00302` | `KIR2DL1*05101` |
-
 
 #### Example
 
@@ -234,8 +251,8 @@ pong2 train --bfile example/chr19 --kfile example/kir_call.csv --output test --l
 >
 > | Overlap Rate | Status | Action |
 > |-------------|--------|--------|
-> | ≥ 50% | Pass: Pass | Proceed with PONG2 directly |
-> | < 50% | Warning: Fail | Run Eagle2 + minimac4 pre-imputation first |
+> | ≥ 50% | Pass | Proceed with PONG2 directly |
+> | < 50% | Fail | Run Eagle2 + minimac4 pre-imputation first |
 
 If your SNP matching rate is below 50%, PONG2 provides two strategies:
 
@@ -264,7 +281,7 @@ pong2 impute \
   -t 20
 ```
 
-> Warning: **Note:** A pre-phased VCF (`--vcf`) is required with `--fill-missing`.
+> **Note:** A pre-phased VCF (`--vcf`) is required with `--fill-missing`.
 
 ### Option B: External pre-imputation (recommended for highest accuracy)
 
@@ -316,6 +333,7 @@ Pre-impute your chr19 data using a public imputation server before running PONG2
 | `No model found for locus` | Unsupported locus or wrong filter | Check locus name and `--filter` value |
 | `incorrect number of dimensions` | Too few training samples | Verify sample overlap between KIR and PLINK files |
 | `plink2 not found` | Not in PATH | Add plink2 to PATH |
+| `pong2: command not found` | CLI not in PATH | Re-run CLI Setup steps above |
 
 ---
 
@@ -323,7 +341,7 @@ Pre-impute your chr19 data using a public imputation server before running PONG2
 
 PONG2 is licensed under the **GNU General Public License v3.0** (GPL-3.0).
 
-You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See [LICENSE](https://cran.r-project.org/web/licenses/GPL-3) or the [GNU GPL-3.0 page](https://cran.r-project.org/web/licenses/GPL-3) for details.
+You are free to use, modify, and distribute PONG2, provided that derivative works are distributed under the same license. See [LICENSE](https://cran.r-project.org/web/licenses/GPL-3) for details.
 
 ---
 
@@ -338,14 +356,12 @@ If you use PONG2 in your research, please cite:
 ---
 
 ## Contact & Support
-- **Tutorial** ([basic](https://normanlabucd.github.io/PONG2/), [imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html), [train](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html))
 
+- **Tutorial** ([basic](https://normanlabucd.github.io/PONG2/), [imputation](https://normanlabucd.github.io/PONG2/articles/PONG2-imputation.html), [train](https://normanlabucd.github.io/PONG2/articles/PONG2-training.html))
 - **GitHub Issues** (preferred for bug reports, feature requests, questions):
   [https://github.com/NormanLabUCD/PONG2/issues](https://github.com/NormanLabUCD/PONG2/issues)
-
 - **Email** (for collaboration or private inquiries):
   paul.norman@cuanschutz.edu
-
 - **Lab / Institution:**
   [Norman Lab](https://medschool.cuanschutz.edu/dbmi/lab-pages/norman-lab) |
   [University of Colorado Anschutz Medical Campus](https://www.cuanschutz.edu/) |

@@ -47,7 +47,7 @@ pong2 impute \
 # Step 3b: If SNP overlap < 50% — external pre-imputation (recommended)
 # Upload chr19.phased.vcf.gz to Michigan Imputation Server:
 #   https://imputationserver.sph.umich.edu/
-#   Reference panel: TOPMed r5
+#   Reference panel:1000 Genome Project
 #   Chromosome: 19 only
 # Download imputed VCF then convert to PLINK
 plink2 \

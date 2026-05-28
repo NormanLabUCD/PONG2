@@ -3678,17 +3678,29 @@ setup_PONG2 <- function() {
 
 #' @export
 .onAttach <- function(lib, pkg)
-{
-  packageStartupMessage("** initializing environment")
-	rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
-	#registerS3method("predict", "hlaAttrBagClass", predict.hlaAttrBagClass)
-	# information
-	packageStartupMessage("PONG2 (Genotype Imputation with Attribute Bagging): v2.0.0")
-	if (rv$SSE.Flag != 0)
-		packageStartupMessage("Supported by Streaming SIMD Extensions 2 (SSE2)")
-
-	TRUE
-}
+  {
+    rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
+    
+    # Show CLI setup instructions only
+    cli_path <- system.file("scripts", "pong2", package=pkg, lib.loc=lib)
+    if (file.exists(cli_path)) {
+      # Make executable
+      Sys.chmod(cli_path, mode = "0755")
+      
+      packageStartupMessage(paste0(
+        "To use pong2 from the terminal add to PATH:\n\n",
+        "  export PATH=\"", dirname(cli_path), ":$PATH\"\n\n",
+        "To make permanent add to ~/.bashrc:\n",
+        "  echo 'export PATH=\"", dirname(cli_path), ":$PATH\"' >> ~/.bashrc"
+      ))
+    }
+    
+    tryCatch(
+      suppressMessages(attachNamespace("HIBAG")),
+      error = function(e) invisible(NULL)
+    )
+    TRUE
+  }
 
 
 #' @export
@@ -3701,5 +3713,5 @@ setup_PONG2 <- function() {
 
 #' @export
 .onLoad <- function(lib, pkg){
-  setup_PONG2()
+  #setup_PONG2()
 }
