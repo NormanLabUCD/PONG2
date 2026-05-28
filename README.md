@@ -118,20 +118,9 @@ R CMD INSTALL --library=/your/custom/path PONG2_1.0.0.tar.gz
 Run the following once in your terminal:
 
 ```bash
-# Step 1: Get the pong2 script location automatically
-PONG2_BIN=$(Rscript -e "cat(system.file('scripts', 'pong2', package='PONG2'))")
-
-# Step 2: Make executable
-chmod +x "$PONG2_BIN"
-
-# Step 3: Add to PATH for current session
-export PATH="$(dirname $PONG2_BIN):$PATH"
-
-# Step 4: Make permanent — add to ~/.bashrc (Linux) or ~/.bash_profile (macOS)
-echo "export PATH=\"$(dirname $PONG2_BIN):\$PATH\"" >> ~/.bashrc
-source ~/.bashrc
-
-# Step 5: Verify
+# Run once after installation
+PONG2_PATH=$(Rscript -e "cat(dirname(system.file('scripts', 'pong2', package='PONG2')))")
+echo "export PATH=\"$PONG2_PATH:\$PATH\"" >> ~/.bashrc && source ~/.bashrc
 pong2 --help
 ```
 
