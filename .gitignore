@@ -23,3 +23,5 @@ CRAN-SUBMISSION
 cran-comments.md
 src/*.o
 src/*.so
+src/*.o
+src/*.so
