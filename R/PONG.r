@@ -3250,15 +3250,19 @@ hlaOutOfBag <- function(model, hla, snp, call.threshold=NaN, verbose=TRUE)
 	ans$confusion <- ans$confusion / nclass
 	ans$detail <- ans$detail / ans$n.detail
 
-	# get miscall
+	# get miscall — full list (extended from HIBAG primary-only)
 	rv <- ans$confusion; diag(rv) <- 0
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- rownames(ans$confusion)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
-
+	miscall_list <- apply(rv, 2, function(col) {
+	  nonzero <- which(col > 0)
+	  if (length(nonzero) == 0) return(NA_character_)
+	  paste(names(col)[nonzero], collapse = ", ")
+	})
 	# output
 	ans$detail <- cbind(ans$detailhead, ans$detail,
-		miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
+	                    miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	ans$detailhead <- NULL
 	ans$n.detail <- NULL
 	ans
