@@ -1698,11 +1698,24 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 		c("sensitivity", "specificity", "ppv", "npv", "accuracy")] <- NaN
 
 	# get miscall
+	
+	# get miscall — full list (extended from HIBAG primary-only)
 	rv <- confusion; diag(rv) <- 0
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
+	miscall_list <- apply(rv, 2, function(col) {
+	  nonzero <- which(col > 0)
+	  if (length(nonzero) == 0) return(NA_character_)
+	  paste(names(col)[nonzero], collapse = ", ")
+	})
 	detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
+	
+	# rv <- confusion; diag(rv) <- 0
+	# m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
+	# s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
+	# p <- m.max / apply(rv, 2, sum)
+	# detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	rownames(detail) <- NULL
 
 	# output
