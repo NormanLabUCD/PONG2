@@ -2339,7 +2339,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         s <- object$hla.allele
         if (length(s) > 3L)
             s <- c(s[1:3], "...")
-        cat("PONG2 model for ", .hla_gene_name_string(object$hla.locus),
+        message("PONG2 model for ", .hla_gene_name_string(object$hla.locus),
             ":\n", "    ", CNum$CNum, " individual classifier(s)",
             "\n", "    ", length(object$snp.id), " SNPs\n", "    ",
             length(object$hla.allele), " unique HLA alleles: ",
@@ -2347,10 +2347,10 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
 
 		cat("Prediction:\n")
         if (vote_method == 1L)
-            cat("    based on the averaged posterior probabilities\n")
+            message("    based on the averaged posterior probabilities\n")
         else cat("    by voting from all individual classifiers\n")
         if (inherits(cl, "cluster")) {
-            cat("    run in parallel with ", length(cl), " compute node",
+            message("    run in parallel with ", length(cl), " compute node",
                 length(cl), "\n", sep = "")
         }
     }
@@ -2376,7 +2376,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         refstr <- sprintf("Model assembly: %s, SNP assembly: %s",
             model.assembly, geno.assembly)
         if (verbose)
-            cat(refstr, "\n", sep = "")
+            message(refstr, "\n", sep = "")
         if (model.assembly != geno.assembly) {
             if (any(c(model.assembly, geno.assembly) %in% "unknown")) {
                 if (verbose)
@@ -2397,7 +2397,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
             else assembly <- "auto"
         }
         if (verbose && verbose.match) {
-            cat("Matching the SNPs between the model and the test data:\n")
+            message("Matching the SNPs between the model and the test data:\n")
             tab <- NULL
             for (tp in c("Position", "Pos+Allele", "RefSNP+Position",
                 "RefSNP")) {
@@ -2414,17 +2414,17 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
                 "")
             tab[1L, 3L] <- paste(tab[1L, 3L], "[1]")
             tab[2L, 3L] <- paste(tab[2L, 3L], "[2]")
-            print(tab, row.names = FALSE)
-            cat("      [1]: useful if ambiguous strands on array-based platforms\n")
-            cat("      [2]: suggested if the model and test data have been matched to the same reference genome\n")
+            message(paste(capture.output(print(tab, row.names = FALSE)), collapse = "\n"))
+            message("      [1]: useful if ambiguous strands on array-based platforms\n")
+            message("      [2]: suggested if the model and test data have been matched to the same reference genome\n")
             s <- object$appendix$platform
             if (is.null(s))
                 s <- "not applicable"
             else s <- paste(s, collapse = ",")
-            cat("    Model platform: ", s, "\n", sep = "")
+            message("    Model platform: ", s, "\n", sep = "")
         }
         else if (verbose) {
-            cat("Using match.type='", match.type, "' for SNP matching\n",
+            message("Using match.type='", match.type, "' for SNP matching\n",
                 sep = "")
         }
         geno.sampid <- snp$sample.id
@@ -2483,7 +2483,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
     n.samp <- dim(snp)[2L]
     n.hla <- length(object$hla.allele)
     if (verbose) {
-        cat(sprintf("# of samples: %d\n", n.samp))
+        message(sprintf("# of samples: %d\n", n.samp))
 		#Workaround for the following error: Error in .Call(HIBAG_Predict_Resp, object$model, as.integer(snp), n.samp,  :
 		#  "PONG2_Kernel_Version" not available for .Call() for package "PONG2"
         #cat("CPU flags: ", .C("PONG2_Kernel_Version", PACKAGE="PONG2")[[2L]][1L], "\n", sep = "")
@@ -2857,39 +2857,41 @@ hlaSubModelObj <- function(obj, n)
   # Check package extdata first — already present or previously downloaded
   pkg_path <- system.file("extdata", "model", "pong2_models.rds", package = "PONG2")
   if (file.exists(pkg_path)) return(pkg_path)
-
-  # Define download destination
-  pkg_dir    <- system.file(package = "PONG2")
-  model_dir  <- file.path(pkg_dir, "extdata", "model")
+  
+  # Use CRAN-approved user data directory for downloaded models
+  model_dir  <- tools::R_user_dir("PONG2", which = "data")
   model_file <- file.path(model_dir, "pong2_models.rds")
-
-  # Create directory if it does not exist
+  
+  # Return if already downloaded
+  if (file.exists(model_file)) return(model_file)
+  
+  # Create directory if needed
   if (!dir.exists(model_dir)) {
     dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
     if (!dir.exists(model_dir))
       stop("Failed to create model directory: ", model_dir)
   }
-
+  
   # Download model file from GitHub release
   message("Downloading PONG2 pre-trained models (one-time setup ~11MB)...")
   tryCatch({
-    download.file(
-      "https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds",
-      model_file, mode = "wb", quiet = FALSE
+    url <- paste0(
+      "https://github.com/NormanLabUCD/PONG2/releases/",
+      "download/v1.0.0/pong2_models.rds"
     )
-    message("Models saved to: ", model_file)
+    utils::download.file(url, destfile = model_file,
+                         mode = "wb", quiet = FALSE)
+    message("Models downloaded successfully to: ", model_dir)
   }, error = function(e) {
     stop(
-      "Failed to download PONG2 models: ", e$message, "
-",
-"Please download manually from:
-",
-"  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds
-",
-"and save to: ", model_dir
+      "Failed to download PONG2 models.\n",
+      "Please download manually from:\n",
+      "  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds\n",
+      "And place in: ", model_dir, "\n",
+      "Error: ", conditionMessage(e)
     )
   })
-
+  
   return(model_file)
 }
 
@@ -3622,61 +3624,6 @@ hlaErrMsg <- function()
 
 #######################################################################
 # Internal R library functions
-#######################################################################
-
-setup_PONG2 <- function() {
-  # Get installation directory
-  pkg_dir <- system.file(package = "PONG2")
-
-  # Check if we're actually installed (not just sourced)
-  if (pkg_dir == "") {
-    packageStartupMessage("PONG2: Development mode - skipping binary installation")
-    return(invisible(NULL))
-  }
-
-  # Define paths
-  scripts_dir <- file.path(pkg_dir, "scripts")
-  #target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
-  #target_bin_dir <- file.path(Sys.getenv("HOME"), "bin")
-  target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
-  cli_name <- "pong2"
-
-  # Make scripts executable
-  if (dir.exists(scripts_dir)) {
-    tryCatch({
-      # Make all scripts executable (including PONG2 without .sh extension)
-      scripts <- list.files(scripts_dir,
-                            pattern = "\\.sh$|^pong2$",
-                            full.names = TRUE)
-      Sys.chmod(scripts, mode = "0755")
-
-      # Install main CLI tool
-      cli_source <- file.path(scripts_dir, "pong2")
-      if (file.exists(cli_source)) {
-        if (!dir.exists(target_bin_dir)) {
-          dir.create(target_bin_dir, recursive = TRUE, mode = "0755")
-        }
-        cli_target <- file.path(target_bin_dir, cli_name)
-        file.copy(cli_source, cli_target, overwrite = TRUE)
-        Sys.chmod(cli_target, mode = "0755")
-
-        # Check PATH
-        if (!grepl(paste0(":", target_bin_dir, "|", target_bin_dir, ":"),
-                   Sys.getenv("PATH"))) {
-          packageStartupMessage(
-            "PONG2: Please add '", target_bin_dir, "' to your PATH:\n",
-            "  export PATH=\"", target_bin_dir, ":$PATH\""
-          )
-        }
-      }
-    }, error = function(e) {
-      packageStartupMessage("PONG2: Installation warning - ", e$message)
-    })
-  }
-}
-
-
-#' @export
 .onAttach <- function(lib, pkg)
   {
     rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
@@ -3713,5 +3660,4 @@ setup_PONG2 <- function() {
 
 #' @export
 .onLoad <- function(lib, pkg){
-  #setup_PONG2()
 }

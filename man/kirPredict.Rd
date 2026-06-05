@@ -18,29 +18,75 @@ kirPredict(
 )
 }
 \arguments{
-\item{object}{a PONG2 model object}
-
-\item{snp}{SNP genotype object}
-
-\item{cl}{cluster object for parallel computation}
-
-\item{type}{type of prediction}
-
-\item{vote}{voting method}
-
-\item{allele.check}{check alleles}
-
-\item{match.type}{SNP matching type}
-
-\item{same.strand}{same strand flag}
-
-\item{verbose}{verbose output}
-
-\item{verbose.match}{verbose matching output}
+\item{object}{a PONG2 model object of class \code{hlaAttrBagClass}
+as returned by \code{kirParallelAttrBagging()}}
+\item{snp}{a SNP genotype object of class \code{hlaSNPGenoClass}
+containing the target samples to impute}
+\item{cl}{a cluster object for parallel computation, or \code{FALSE}
+(default) for single-threaded prediction}
+\item{type}{character; type of prediction output. One of:
+\code{"response+dosage"} (default; predicted alleles + dosage scores),
+\code{"response"} (predicted alleles only),
+\code{"prob"} (posterior probabilities only),
+\code{"response+prob"} (predicted alleles + posterior probabilities)}
+\item{vote}{character; voting method for ensemble classifiers.
+One of \code{"prob"} (default; probability-weighted voting) or
+\code{"majority"} (majority vote)}
+\item{allele.check}{logical; if \code{TRUE} (default), check and
+validate allele names against the model}
+\item{match.type}{character; SNP matching method. One of
+\code{"Position"} (default), \code{"Pos+Allele"},
+\code{"RefSNP+Position"}, or \code{"RefSNP"}}
+\item{same.strand}{logical; if \code{TRUE}, assume SNPs are on the
+same strand (default: \code{FALSE})}
+\item{verbose}{logical; if \code{TRUE} (default), print progress
+messages}
+\item{verbose.match}{logical; if \code{TRUE} (default), print SNP
+matching summary}
 }
 \value{
-prediction results
+An object of class \code{hlaAlleleClass} containing KIR imputation
+results. The object includes:
+\describe{
+  \item{value}{data frame with columns \code{sample.id},
+    \code{allele1}, \code{allele2}, and \code{prob} (posterior
+    probability of the best call)}
+  \item{dosage}{numeric matrix of allele dosage scores
+    (samples x alleles); \code{NULL} if \code{type = "response"}}
+  \item{postprob}{numeric matrix of posterior probabilities
+    (alleles x samples); \code{NULL} unless
+    \code{type = "response+prob"} or \code{"prob"}}
+}
+Samples with posterior probability below the call threshold
+(\code{CT}) are assigned \code{NA} for both alleles.
 }
 \description{
-Predict KIR genotypes from SNP data
+Predict KIR genotypes for a set of samples using a trained PONG2
+attribute bagging model. This is the core prediction function used
+by the \code{pong2 impute} CLI command.
+}
+\examples{
+\dontrun{
+  # Load a trained model
+  load("KIR3DL1_model.RData")
+  model <- hlaModelFromObj(mobj)
+
+  # Load target SNP data
+  geno <- hlaBED2Geno(bed.fn = "chr19", assembly = "hg19")
+
+  # Predict KIR genotypes
+  pred <- kirPredict(
+    object = model,
+    snp    = geno,
+    type   = "response+dosage",
+    vote   = "prob"
+  )
+
+  # View results
+  head(pred$value)
+
+  # Apply call threshold
+  called <- pred$value[!is.na(pred$value$allele1), ]
+  cat("Call rate:", nrow(called) / nrow(pred$value), "\n")
+}
 }

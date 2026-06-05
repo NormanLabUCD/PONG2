@@ -18,29 +18,66 @@ kirParallelAttrBagging(
 )
 }
 \arguments{
-\item{cl}{cluster object for parallel computation}
-
-\item{hla}{KIR allele table for training}
-
-\item{snp}{SNP genotype object}
-
-\item{auto.save}{file path for auto saving classifiers during training}
-
-\item{nclassifier}{number of ensemble classifiers}
-
-\item{mtry}{number of SNPs randomly selected}
-
-\item{prune}{logical prune classifiers}
-
-\item{rm.na}{logical remove missing values}
-
-\item{stop.cluster}{logical stop cluster after training completes}
-
-\item{verbose}{logical verbose output}
+\item{cl}{a cluster object created by \code{parallel::makeCluster()} for
+parallel computation across multiple CPU cores}
+\item{hla}{a KIR allele table object of class \code{hlaAlleleClass}
+containing training allele calls}
+\item{snp}{a SNP genotype object of class \code{hlaSNPGenoClass}
+containing training SNP data}
+\item{auto.save}{character string; file path prefix for auto-saving
+classifiers during training. Use \code{""} (default) to disable auto-saving}
+\item{nclassifier}{integer; number of individual ensemble classifiers
+to train (default: 100)}
+\item{mtry}{character; number of SNPs randomly selected at each node.
+One of \code{"sqrt"} (square root of total SNPs, default),
+\code{"all"} (all SNPs), or \code{"one"} (one SNP)}
+\item{prune}{logical; if \code{TRUE} (default), prune classifiers to
+reduce model size without loss of accuracy}
+\item{rm.na}{logical; if \code{TRUE} (default), remove samples with
+missing KIR allele calls from training}
+\item{stop.cluster}{logical; if \code{TRUE}, stop the parallel cluster
+after training completes (default: \code{FALSE})}
+\item{verbose}{logical; if \code{TRUE} (default), print progress
+messages during training}
 }
 \value{
-a PONG2 model object
+An object of class \code{hlaAttrBagClass} representing the trained
+PONG2 KIR prediction model. The object contains:
+\describe{
+  \item{n.samp}{integer; number of training samples}
+  \item{n.snp}{integer; number of SNP predictors used}
+  \item{hla.locus}{character; the KIR locus name}
+  \item{hla.allele}{character vector; KIR alleles in the model}
+  \item{classifiers}{list; individual ensemble classifiers}
+  \item{out.of.bag.acc}{numeric; out-of-bag accuracy estimate}
+}
+Use \code{kirPredict()} to apply the model to new samples.
 }
 \description{
-Train KIR prediction models in parallel
+Train KIR genotype prediction models using parallel attribute bagging
+(ensemble learning) across multiple CPU cores. This is the core training
+function used by the \code{pong2 train} CLI command.
+}
+\examples{
+\dontrun{
+  # Load training data
+  geno <- hlaBED2Geno(bed.fn = "chr19", assembly = "hg19")
+  kir  <- hlaAllele(geno$sample.id,
+                    H1 = kir_calls$KIR3DL1_h1,
+                    H2 = kir_calls$KIR3DL1_h2,
+                    locus = "KIR3DL1")
+
+  # Set up parallel cluster
+  cl <- parallel::makeCluster(4)
+
+  # Train model
+  model <- kirParallelAttrBagging(
+    cl          = cl,
+    hla         = kir,
+    snp         = geno,
+    nclassifier = 100
+  )
+
+  parallel::stopCluster(cl)
+}
 }

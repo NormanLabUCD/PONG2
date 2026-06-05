@@ -43,9 +43,8 @@
 \alias{predict.hlaAttrBagClass}
 \alias{print.hlaAttrBagClass}
 \alias{print.hlaAttrBagObj}
-\alias{setup_PONG2}
-\alias{.Last.lib}
-\alias{.get_model_path}
+\alias{.Last.lib}
+\alias{.get_model_path}
 \alias{summary.hlaAlleleClass}
 \alias{summary.hlaAttrBagClass}
 \alias{summary.hlaAttrBagObj}
@@ -54,6 +53,9 @@
 \title{Internal PONG2 Functions}
 \description{
   Internal functions used by PONG2 for KIR genotype imputation.
-  These functions are modified from the HIBAG package.
+  These functions are adapted from the HIBAG package
+  (Zheng et al. 2014, <doi:10.1016/j.ajhg.2013.12.015>)
+  and are not intended to be called directly by users.
 }
+\value{No return value, called for side effects or internal use only.}
 \keyword{internal}
