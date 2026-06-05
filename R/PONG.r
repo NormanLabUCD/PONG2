@@ -1702,7 +1702,7 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
-	detail <- cbind(detail, miscall=s, miscall.prop=p, stringsAsFactors=FALSE)
+	detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	rownames(detail) <- NULL
 
 	# output
@@ -3258,7 +3258,7 @@ hlaOutOfBag <- function(model, hla, snp, call.threshold=NaN, verbose=TRUE)
 
 	# output
 	ans$detail <- cbind(ans$detailhead, ans$detail,
-		miscall=s, miscall.prop=p, stringsAsFactors=FALSE)
+		miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	ans$detailhead <- NULL
 	ans$n.detail <- NULL
 	ans
