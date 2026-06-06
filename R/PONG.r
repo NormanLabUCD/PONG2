@@ -1698,24 +1698,11 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 		c("sensitivity", "specificity", "ppv", "npv", "accuracy")] <- NaN
 
 	# get miscall
-	
-	# get miscall — full list (extended from HIBAG primary-only)
 	rv <- confusion; diag(rv) <- 0
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
-	miscall_list <- apply(rv, 2, function(col) {
-	  nonzero <- which(col > 0)
-	  if (length(nonzero) == 0) return(NA_character_)
-	  paste(names(col)[nonzero], collapse = ", ")
-	})
 	detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
-	
-	# rv <- confusion; diag(rv) <- 0
-	# m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
-	# s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
-	# p <- m.max / apply(rv, 2, sum)
-	# detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	rownames(detail) <- NULL
 
 	# output
@@ -2352,7 +2339,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         s <- object$hla.allele
         if (length(s) > 3L)
             s <- c(s[1:3], "...")
-        message("PONG2 model for ", .hla_gene_name_string(object$hla.locus),
+        cat("PONG2 model for ", .hla_gene_name_string(object$hla.locus),
             ":\n", "    ", CNum$CNum, " individual classifier(s)",
             "\n", "    ", length(object$snp.id), " SNPs\n", "    ",
             length(object$hla.allele), " unique HLA alleles: ",
@@ -2360,10 +2347,10 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
 
 		cat("Prediction:\n")
         if (vote_method == 1L)
-            message("    based on the averaged posterior probabilities\n")
+            cat("    based on the averaged posterior probabilities\n")
         else cat("    by voting from all individual classifiers\n")
         if (inherits(cl, "cluster")) {
-            message("    run in parallel with ", length(cl), " compute node",
+            cat("    run in parallel with ", length(cl), " compute node",
                 length(cl), "\n", sep = "")
         }
     }
@@ -2389,7 +2376,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
         refstr <- sprintf("Model assembly: %s, SNP assembly: %s",
             model.assembly, geno.assembly)
         if (verbose)
-            message(refstr, "\n", sep = "")
+            cat(refstr, "\n", sep = "")
         if (model.assembly != geno.assembly) {
             if (any(c(model.assembly, geno.assembly) %in% "unknown")) {
                 if (verbose)
@@ -2410,7 +2397,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
             else assembly <- "auto"
         }
         if (verbose && verbose.match) {
-            message("Matching the SNPs between the model and the test data:\n")
+            cat("Matching the SNPs between the model and the test data:\n")
             tab <- NULL
             for (tp in c("Position", "Pos+Allele", "RefSNP+Position",
                 "RefSNP")) {
@@ -2427,17 +2414,17 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
                 "")
             tab[1L, 3L] <- paste(tab[1L, 3L], "[1]")
             tab[2L, 3L] <- paste(tab[2L, 3L], "[2]")
-            message(paste(capture.output(print(tab, row.names = FALSE)), collapse = "\n"))
-            message("      [1]: useful if ambiguous strands on array-based platforms\n")
-            message("      [2]: suggested if the model and test data have been matched to the same reference genome\n")
+            print(tab, row.names = FALSE)
+            cat("      [1]: useful if ambiguous strands on array-based platforms\n")
+            cat("      [2]: suggested if the model and test data have been matched to the same reference genome\n")
             s <- object$appendix$platform
             if (is.null(s))
                 s <- "not applicable"
             else s <- paste(s, collapse = ",")
-            message("    Model platform: ", s, "\n", sep = "")
+            cat("    Model platform: ", s, "\n", sep = "")
         }
         else if (verbose) {
-            message("Using match.type='", match.type, "' for SNP matching\n",
+            cat("Using match.type='", match.type, "' for SNP matching\n",
                 sep = "")
         }
         geno.sampid <- snp$sample.id
@@ -2496,7 +2483,7 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
     n.samp <- dim(snp)[2L]
     n.hla <- length(object$hla.allele)
     if (verbose) {
-        message(sprintf("# of samples: %d\n", n.samp))
+        cat(sprintf("# of samples: %d\n", n.samp))
 		#Workaround for the following error: Error in .Call(HIBAG_Predict_Resp, object$model, as.integer(snp), n.samp,  :
 		#  "PONG2_Kernel_Version" not available for .Call() for package "PONG2"
         #cat("CPU flags: ", .C("PONG2_Kernel_Version", PACKAGE="PONG2")[[2L]][1L], "\n", sep = "")
@@ -2870,41 +2857,39 @@ hlaSubModelObj <- function(obj, n)
   # Check package extdata first — already present or previously downloaded
   pkg_path <- system.file("extdata", "model", "pong2_models.rds", package = "PONG2")
   if (file.exists(pkg_path)) return(pkg_path)
-  
-  # Use CRAN-approved user data directory for downloaded models
-  model_dir  <- tools::R_user_dir("PONG2", which = "data")
+
+  # Define download destination
+  pkg_dir    <- system.file(package = "PONG2")
+  model_dir  <- file.path(pkg_dir, "extdata", "model")
   model_file <- file.path(model_dir, "pong2_models.rds")
-  
-  # Return if already downloaded
-  if (file.exists(model_file)) return(model_file)
-  
-  # Create directory if needed
+
+  # Create directory if it does not exist
   if (!dir.exists(model_dir)) {
     dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
     if (!dir.exists(model_dir))
       stop("Failed to create model directory: ", model_dir)
   }
-  
+
   # Download model file from GitHub release
   message("Downloading PONG2 pre-trained models (one-time setup ~11MB)...")
   tryCatch({
-    url <- paste0(
-      "https://github.com/NormanLabUCD/PONG2/releases/",
-      "download/v1.0.0/pong2_models.rds"
+    download.file(
+      "https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds",
+      model_file, mode = "wb", quiet = FALSE
     )
-    utils::download.file(url, destfile = model_file,
-                         mode = "wb", quiet = FALSE)
-    message("Models downloaded successfully to: ", model_dir)
+    message("Models saved to: ", model_file)
   }, error = function(e) {
     stop(
-      "Failed to download PONG2 models.\n",
-      "Please download manually from:\n",
-      "  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds\n",
-      "And place in: ", model_dir, "\n",
-      "Error: ", conditionMessage(e)
+      "Failed to download PONG2 models: ", e$message, "
+",
+"Please download manually from:
+",
+"  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds
+",
+"and save to: ", model_dir
     )
   })
-  
+
   return(model_file)
 }
 
@@ -3263,19 +3248,15 @@ hlaOutOfBag <- function(model, hla, snp, call.threshold=NaN, verbose=TRUE)
 	ans$confusion <- ans$confusion / nclass
 	ans$detail <- ans$detail / ans$n.detail
 
-	# get miscall — full list (extended from HIBAG primary-only)
+	# get miscall
 	rv <- ans$confusion; diag(rv) <- 0
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- rownames(ans$confusion)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
-	miscall_list <- apply(rv, 2, function(col) {
-	  nonzero <- which(col > 0)
-	  if (length(nonzero) == 0) return(NA_character_)
-	  paste(names(col)[nonzero], collapse = ", ")
-	})
+
 	# output
 	ans$detail <- cbind(ans$detailhead, ans$detail,
-	                    miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
+		miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
 	ans$detailhead <- NULL
 	ans$n.detail <- NULL
 	ans
@@ -3641,30 +3622,72 @@ hlaErrMsg <- function()
 
 #######################################################################
 # Internal R library functions
-.onAttach <- function(lib, pkg)
-  {
-    rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
-    
-    # Show CLI setup instructions only
-    cli_path <- system.file("scripts", "pong2", package=pkg, lib.loc=lib)
-    if (file.exists(cli_path)) {
-      # Make executable
-      Sys.chmod(cli_path, mode = "0755")
-      
-      packageStartupMessage(paste0(
-        "To use pong2 from the terminal add to PATH:\n\n",
-        "  export PATH=\"", dirname(cli_path), ":$PATH\"\n\n",
-        "To make permanent add to ~/.bashrc:\n",
-        "  echo 'export PATH=\"", dirname(cli_path), ":$PATH\"' >> ~/.bashrc"
-      ))
-    }
-    
-    tryCatch(
-      suppressMessages(attachNamespace("HIBAG")),
-      error = function(e) invisible(NULL)
-    )
-    TRUE
+#######################################################################
+
+setup_PONG2 <- function() {
+  # Get installation directory
+  pkg_dir <- system.file(package = "PONG2")
+
+  # Check if we're actually installed (not just sourced)
+  if (pkg_dir == "") {
+    packageStartupMessage("PONG2: Development mode - skipping binary installation")
+    return(invisible(NULL))
   }
+
+  # Define paths
+  scripts_dir <- file.path(pkg_dir, "scripts")
+  #target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
+  #target_bin_dir <- file.path(Sys.getenv("HOME"), "bin")
+  target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
+  cli_name <- "pong2"
+
+  # Make scripts executable
+  if (dir.exists(scripts_dir)) {
+    tryCatch({
+      # Make all scripts executable (including PONG2 without .sh extension)
+      scripts <- list.files(scripts_dir,
+                            pattern = "\\.sh$|^pong2$",
+                            full.names = TRUE)
+      Sys.chmod(scripts, mode = "0755")
+
+      # Install main CLI tool
+      cli_source <- file.path(scripts_dir, "pong2")
+      if (file.exists(cli_source)) {
+        if (!dir.exists(target_bin_dir)) {
+          dir.create(target_bin_dir, recursive = TRUE, mode = "0755")
+        }
+        cli_target <- file.path(target_bin_dir, cli_name)
+        file.copy(cli_source, cli_target, overwrite = TRUE)
+        Sys.chmod(cli_target, mode = "0755")
+
+        # Check PATH
+        if (!grepl(paste0(":", target_bin_dir, "|", target_bin_dir, ":"),
+                   Sys.getenv("PATH"))) {
+          packageStartupMessage(
+            "PONG2: Please add '", target_bin_dir, "' to your PATH:\n",
+            "  export PATH=\"", target_bin_dir, ":$PATH\""
+          )
+        }
+      }
+    }, error = function(e) {
+      packageStartupMessage("PONG2: Installation warning - ", e$message)
+    })
+  }
+}
+
+
+#' @export
+.onAttach <- function(lib, pkg)
+{
+  packageStartupMessage("** initializing environment")
+	#registerS3method("predict", "hlaAttrBagClass", predict.hlaAttrBagClass)
+	# information
+	packageStartupMessage("PONG2 (Genotype Imputation with Attribute Bagging): v2.0.0")
+	if (rv$SSE.Flag != 0)
+		packageStartupMessage("Supported by Streaming SIMD Extensions 2 (SSE2)")
+
+	TRUE
+}
 
 
 #' @export
@@ -3677,4 +3700,5 @@ hlaErrMsg <- function()
 
 #' @export
 .onLoad <- function(lib, pkg){
+  setup_PONG2()
 }
