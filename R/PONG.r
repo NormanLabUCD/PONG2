@@ -1702,7 +1702,7 @@ hlaCompareAllele <- function(TrueHLA, PredHLA, allele.limit=NULL,
 	m.max <- apply(rv, 2, max); m.idx <- apply(rv, 2, which.max)
 	s <- names(PredNum)[m.idx]; s[m.max<=0] <- NA
 	p <- m.max / apply(rv, 2, sum)
-	detail <- cbind(detail, miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
+	detail <- cbind(detail, miscall=s, miscall.prop=p, stringsAsFactors=FALSE)
 	rownames(detail) <- NULL
 
 	# output
@@ -3256,7 +3256,7 @@ hlaOutOfBag <- function(model, hla, snp, call.threshold=NaN, verbose=TRUE)
 
 	# output
 	ans$detail <- cbind(ans$detailhead, ans$detail,
-		miscall=s, miscall.prop=p, miscall.list=miscall_list, stringsAsFactors=FALSE)
+		miscall=s, miscall.prop=p, stringsAsFactors=FALSE)
 	ans$detailhead <- NULL
 	ans$n.detail <- NULL
 	ans
@@ -3680,6 +3680,7 @@ setup_PONG2 <- function() {
 .onAttach <- function(lib, pkg)
 {
   packageStartupMessage("** initializing environment")
+	rv <- .C("PONG2_Init", SSE.Flag=integer(1), PACKAGE="PONG2")
 	#registerS3method("predict", "hlaAttrBagClass", predict.hlaAttrBagClass)
 	# information
 	packageStartupMessage("PONG2 (Genotype Imputation with Attribute Bagging): v2.0.0")
