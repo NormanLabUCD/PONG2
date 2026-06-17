@@ -25,20 +25,17 @@ containing training allele calls}
 \item{snp}{a SNP genotype object of class \code{hlaSNPGenoClass}
 containing training SNP data}
 \item{auto.save}{character string; file path prefix for auto-saving
-classifiers during training. Use \code{""} (default) to disable auto-saving}
+classifiers during training. Use \code{""} (default) to disable}
 \item{nclassifier}{integer; number of individual ensemble classifiers
 to train (default: 100)}
 \item{mtry}{character; number of SNPs randomly selected at each node.
-One of \code{"sqrt"} (square root of total SNPs, default),
-\code{"all"} (all SNPs), or \code{"one"} (one SNP)}
-\item{prune}{logical; if \code{TRUE} (default), prune classifiers to
-reduce model size without loss of accuracy}
+One of \code{"sqrt"} (default), \code{"all"}, or \code{"one"}}
+\item{prune}{logical; if \code{TRUE} (default), prune classifiers}
 \item{rm.na}{logical; if \code{TRUE} (default), remove samples with
-missing KIR allele calls from training}
+missing KIR allele calls}
 \item{stop.cluster}{logical; if \code{TRUE}, stop the parallel cluster
-after training completes (default: \code{FALSE})}
-\item{verbose}{logical; if \code{TRUE} (default), print progress
-messages during training}
+after training (default: \code{FALSE})}
+\item{verbose}{logical; if \code{TRUE} (default), print progress}
 }
 \value{
 An object of class \code{hlaAttrBagClass} representing the trained
@@ -55,29 +52,30 @@ Use \code{kirPredict()} to apply the model to new samples.
 }
 \description{
 Train KIR genotype prediction models using parallel attribute bagging
-(ensemble learning) across multiple CPU cores. This is the core training
-function used by the \code{pong2 train} CLI command.
+across multiple CPU cores. This is the core training function used
+by the \code{pong2 train} CLI command.
 }
 \examples{
-\dontrun{
-  # Load training data
-  geno <- hlaBED2Geno(bed.fn = "chr19", assembly = "hg19")
-  kir  <- hlaAllele(geno$sample.id,
-                    H1 = kir_calls$KIR3DL1_h1,
-                    H2 = kir_calls$KIR3DL1_h2,
-                    locus = "KIR3DL1")
+# Load example data
+data(PONG2_example)
 
-  # Set up parallel cluster
-  cl <- parallel::makeCluster(4)
+# Set up parallel cluster
+cl <- parallel::makeCluster(2)
 
-  # Train model
-  model <- kirParallelAttrBagging(
-    cl          = cl,
-    hla         = kir,
-    snp         = geno,
-    nclassifier = 100
-  )
+# Train a small model
+model <- kirParallelAttrBagging(
+  cl          = cl,
+  hla         = example_kir,
+  snp         = example_snp,
+  nclassifier = 20,
+  verbose     = FALSE
+)
 
-  parallel::stopCluster(cl)
-}
+parallel::stopCluster(cl)
+
+# View model summary
+print(model)
+
+# Clean up
+hlaClose(model)
 }

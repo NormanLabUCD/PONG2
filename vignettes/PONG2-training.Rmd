@@ -8,7 +8,7 @@ output:
     fig_width: 7
     fig_height: 5
 vignette: >
-  %\VignetteIndexEntry{PONG2 Training Workflow}
+  %\VignetteIndexEntry{PONG2 Training: Building Custom KIR Prediction Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

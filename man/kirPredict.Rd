@@ -66,27 +66,23 @@ attribute bagging model. This is the core prediction function used
 by the \code{pong2 impute} CLI command.
 }
 \examples{
-\dontrun{
-  # Load a trained model
-  load("KIR3DL1_model.RData")
-  model <- hlaModelFromObj(mobj)
+# Load example data
+data(PONG2_example)
 
-  # Load target SNP data
-  geno <- hlaBED2Geno(bed.fn = "chr19", assembly = "hg19")
+# Load model from object
+model <- hlaModelFromObj(example_mobj)
 
-  # Predict KIR genotypes
-  pred <- kirPredict(
-    object = model,
-    snp    = geno,
-    type   = "response+dosage",
-    vote   = "prob"
-  )
+# Predict KIR genotypes
+pred <- kirPredict(
+  object  = model,
+  snp     = example_snp,
+  type    = "response+prob",
+  verbose = FALSE
+)
 
-  # View results
-  head(pred$value)
+# View results
+head(pred$value)
 
-  # Apply call threshold
-  called <- pred$value[!is.na(pred$value$allele1), ]
-  cat("Call rate:", nrow(called) / nrow(pred$value), "\n")
-}
+# Clean up
+hlaClose(model)
 }

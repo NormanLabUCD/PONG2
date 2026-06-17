@@ -1,5 +1,5 @@
 ---
-title: "PONG2 Imputation: Step-by-Step Workflow"
+title: "PONG2 Imputation Workflow"
 author: "Norman Lab"
 output: 
   rmarkdown::html_vignette:

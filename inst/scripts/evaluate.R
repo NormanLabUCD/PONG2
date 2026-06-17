@@ -38,7 +38,7 @@ model     <- hlaModelFromObj(mobj)
 # Predict on test set
 cat("\n--- Model Evaluation ---\n")
 pred <- kirPredict(model, test.geno, type = "response+prob", verbose = FALSE)
-comp <- hlaCompareAllele(kirtab$validation, pred,
+comp <- PONG2::hlaCompareAllele(kirtab$validation, pred,
                          allele.limit = model, call.threshold = threshold)
 # Overall accuracy
 cat(sprintf("Locus:              %s\n",     locus))

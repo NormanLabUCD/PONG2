@@ -8,7 +8,7 @@ output:
     fig_width: 7
     fig_height: 5
 vignette: >
-  %\VignetteIndexEntry{PONG2 Basics}
+  %\VignetteIndexEntry{PONG2 Basics: Installation, Quick Start, and Core Usage}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE
+  eval = FALSE  # overridden per chunk
 )
 ```
 
@@ -113,7 +113,7 @@ export PATH="$(dirname $PONG2_BIN):$PATH"
 
 ### Verify installation
 
-```r
+```{r verify, eval = TRUE}
 library(PONG2)
 packageVersion("PONG2")
 ```

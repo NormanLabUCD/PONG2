@@ -13,3 +13,4 @@
 ^output$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
+^pong2_models\.rds$

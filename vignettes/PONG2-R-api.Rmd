@@ -1,0 +1,221 @@
+---
+title: "PONG2 R API: Direct R Usage with Example Data"
+author: "Norman Lab"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{PONG2 R API: Direct R Usage with Example Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+```
+
+## Overview
+
+This vignette demonstrates the PONG2 R API using the built-in example
+dataset. PONG2 is primarily a command-line tool (`pong2 impute`,
+`pong2 train`) — see the other vignettes for CLI usage. The R API
+demonstrated here is the underlying interface used by the CLI.
+
+---
+
+## 1. Installation and Setup
+
+```{r install, eval = FALSE}
+# From CRAN
+install.packages("PONG2")
+
+# From GitHub
+remotes::install_github("NormanLabUCD/PONG2")
+```
+
+```{r load}
+library(PONG2)
+packageVersion("PONG2")
+```
+
+---
+
+## 2. Example Data
+
+PONG2 includes a built-in example dataset with 50 samples and 200 SNPs
+in the KIR region (chr19), along with a pre-trained KIR3DL1 model.
+
+```{r example_data}
+# Load built-in example data
+data(PONG2_example)
+
+# SNP genotype data
+cat("SNP genotype data:\n")
+cat("  Samples:", ncol(example_snp$genotype), "\n")
+cat("  SNPs:   ", nrow(example_snp$genotype), "\n")
+cat("  Assembly:", example_snp$assembly, "\n")
+
+# KIR allele table
+cat("\nKIR allele table:\n")
+cat("  Locus:  ", example_kir$locus, "\n")
+cat("  Alleles:", length(example_kir$allele), "\n")
+cat("  Samples:", length(example_kir$value$sample.id), "\n")
+head(example_kir$value, 3)
+```
+
+---
+
+## 3. KIR Genotype Prediction
+
+```{r predict}
+# Load the pre-trained example model
+model <- hlaModelFromObj(example_mobj)
+
+cat("Model summary:\n")
+cat("  KIR locus:   ", model$hla.locus, "\n")
+cat("  Classifiers: ", length(example_mobj$classifiers), "\n")
+cat("  Alleles:     ", length(model$hla.allele), "\n")
+
+# Predict KIR genotypes on example SNP data
+pred <- kirPredict(
+  object  = model,
+  snp     = example_snp,
+  type    = "response+prob",
+  verbose = FALSE
+)
+
+# View predictions
+cat("\nFirst 5 predictions:\n")
+head(pred$value, 5)
+
+# Call rate
+called    <- sum(!is.na(pred$value$allele1))
+call_rate <- round(called / nrow(pred$value) * 100, 1)
+cat("\nCall rate:", call_rate, "%\n")
+
+# Clean up model handle
+hlaClose(model)
+```
+
+---
+
+## 4. Model Training
+
+```{r train}
+# Set up parallel cluster
+cl <- parallel::makeCluster(2)
+
+# Train a small KIR3DL1 model using example data
+model_trained <- kirParallelAttrBagging(
+  cl          = cl,
+  hla         = example_kir,
+  snp         = example_snp,
+  nclassifier = 5,
+  verbose     = FALSE
+)
+
+parallel::stopCluster(cl)
+
+# View trained model summary
+print(model_trained)
+
+# Save model as R object
+mobj_trained <- hlaModelToObj(model_trained)
+cat("\nModel saved with", length(mobj_trained$classifiers), 
+    "classifiers\n")
+
+# Clean up
+hlaClose(model_trained)
+```
+
+---
+
+## 5. Model Evaluation
+
+```{r evaluate}
+# Split example data into train and test
+set.seed(42)
+n       <- length(example_kir$value$sample.id)
+idx     <- sample(1:n, floor(n * 0.7))
+train_samples <- example_kir$value$sample.id[idx]
+test_samples  <- example_kir$value$sample.id[-idx]
+
+# Subset KIR and SNP data
+train_kir <- hlaAlleleSubset(example_kir,
+               match(train_samples, example_kir$value$sample.id))
+test_kir  <- hlaAlleleSubset(example_kir,
+               match(test_samples, example_kir$value$sample.id))
+
+# Train model on training set
+cl <- parallel::makeCluster(2)
+model_eval <- kirParallelAttrBagging(
+  cl          = cl,
+  hla         = train_kir,
+  snp         = example_snp,
+  nclassifier = 5,
+  verbose     = FALSE
+)
+parallel::stopCluster(cl)
+
+# Subset SNP data to test samples
+test_snp_idx <- match(test_samples, example_snp$sample.id)
+test_snp     <- hlaGenoSubset(example_snp, samp.sel = test_snp_idx)
+
+# Predict on test set
+pred_eval <- kirPredict(
+  object  = model_eval,
+  snp     = test_snp,
+  type    = "response+prob",
+  verbose = FALSE
+)
+
+# Compare predictions to truth
+comp <- hlaCompareAllele(
+  TrueHLA        = test_kir,
+  PredHLA        = pred_eval,
+  call.threshold = 0.5,
+  verbose        = FALSE
+)
+
+cat("Evaluation results:\n")
+cat("  Haplotype accuracy:", 
+    round(comp$overall$acc.haplo * 100, 1), "%\n")
+cat("  Genotype accuracy: ", 
+    round(comp$overall$acc.ind * 100, 1), "%\n")
+cat("  Call rate:         ", 
+    round(comp$overall$call.rate * 100, 1), "%\n")
+
+# Clean up
+hlaClose(model_eval)
+```
+
+---
+
+## 6. CLI Usage
+
+For the complete command-line workflow used in the manuscript, see:
+
+- `vignette("PONG2-basics")` — installation and CLI quick start
+- `vignette("PONG2-imputation")` — full imputation workflow
+- `vignette("PONG2-training")` — custom model training
+
+Or run directly from the terminal:
+
+```{r cli_example, eval = FALSE}
+# These commands run from the terminal after adding pong2 to PATH
+system("pong2 impute -i example/chr19 -o output -l KIR3DL1 -a hg19")
+system("pong2 train --bfile example/chr19 --kfile example/kir_call.csv \
+        --output output --locus KIR3DL1 --assembly hg19")
+```
+
+---
+
+## Session Info
+
+```{r session}
+sessionInfo()
+```

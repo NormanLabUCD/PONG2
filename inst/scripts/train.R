@@ -91,6 +91,11 @@ if(locusregion == "Null" && !locus %in% names(kir_position)){
 frequency_filter <- function(kir_data, locus, filtered_freq){
   allele1=paste0(locus, "_h1")
   allele2=paste0(locus, "_h2")
+  # Check if locus columns exist in KIR file
+  if (!allele1 %in% colnames(kir_data) || !allele2 %in% colnames(kir_data)) {
+    available <- gsub("_h1$", "", grep("_h1$", colnames(kir_data), value = TRUE))
+    stop("Locus '", locus, "' not found in KIR file.\nAvailable loci: ", paste(available, collapse = ", "), "\nCheck --locus matches column names in --kfile (e.g. KIR3DL1_h1, KIR3DL1_h2)")
+  }
   kir_data = kir_data[, c("Sample", allele1, allele2)]
 
   for (col in names(kir_data)) {

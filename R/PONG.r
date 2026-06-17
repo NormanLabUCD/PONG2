@@ -2853,43 +2853,61 @@ hlaSubModelObj <- function(obj, n)
 # Downloads from GitHub release on first use if not found locally
 #
 
-.get_model_path <- function() {
-  # Check package extdata first — already present or previously downloaded
+.get_model_path <- function(force_update = FALSE) {
+  
+  # Model version — update this when models change, independent of package version
+  model_version <- "1.0.0"
+  model_url     <- paste0(
+    "https://github.com/NormanLabUCD/PONG2/releases/download/v",
+    model_version, "/pong2_models.rds"
+  )
+  
+  # Check package extdata first — bundled model
   pkg_path <- system.file("extdata", "model", "pong2_models.rds", package = "PONG2")
-  if (file.exists(pkg_path)) return(pkg_path)
-
-  # Define download destination
-  pkg_dir    <- system.file(package = "PONG2")
-  model_dir  <- file.path(pkg_dir, "extdata", "model")
-  model_file <- file.path(model_dir, "pong2_models.rds")
-
-  # Create directory if it does not exist
+  if (file.exists(pkg_path) && !force_update) return(pkg_path)
+  
+  # Use CRAN-approved user data directory
+  model_dir    <- tools::R_user_dir("PONG2", which = "data")
+  model_file   <- file.path(model_dir, "pong2_models.rds")
+  version_file <- file.path(model_dir, "model_version.txt")
+  
+  # Return cached model if version matches
+  if (file.exists(model_file) && !force_update) {
+    cached_version <- if (file.exists(version_file))
+      readLines(version_file, warn = FALSE)[1] else ""
+    if (cached_version == model_version) {
+      return(model_file)
+    } else {
+      message("New PONG2 model available (v", model_version,
+              "). Updating from v", cached_version, "...")
+    }
+  }
+  
+  # Create directory if needed
   if (!dir.exists(model_dir)) {
     dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
     if (!dir.exists(model_dir))
       stop("Failed to create model directory: ", model_dir)
   }
-
-  # Download model file from GitHub release
-  message("Downloading PONG2 pre-trained models (one-time setup ~11MB)...")
+  
+  # Download model
+  message("Downloading PONG2 pre-trained models v", model_version,
+          " (~11MB)...")
   tryCatch({
-    download.file(
-      "https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds",
-      model_file, mode = "wb", quiet = FALSE
-    )
-    message("Models saved to: ", model_file)
+    utils::download.file(url      = model_url,
+                         destfile = model_file,
+                         mode     = "wb",
+                         quiet    = FALSE)
+    # Cache version
+    writeLines(model_version, version_file)
+    message("Models v", model_version, " saved to: ", model_file)
   }, error = function(e) {
     stop(
-      "Failed to download PONG2 models: ", e$message, "
-",
-"Please download manually from:
-",
-"  https://github.com/NormanLabUCD/PONG2/releases/download/v1.0.0/pong2_models.rds
-",
-"and save to: ", model_dir
+      "Failed to download PONG2 models: ", e$message, "\n",
+      "Please download manually from:\n  ", model_url, "\n",
+      "and save to: ", model_dir
     )
   })
-
   return(model_file)
 }
 
@@ -3624,56 +3642,56 @@ hlaErrMsg <- function()
 # Internal R library functions
 #######################################################################
 
-setup_PONG2 <- function() {
-  # Get installation directory
-  pkg_dir <- system.file(package = "PONG2")
-
-  # Check if we're actually installed (not just sourced)
-  if (pkg_dir == "") {
-    packageStartupMessage("PONG2: Development mode - skipping binary installation")
-    return(invisible(NULL))
-  }
-
-  # Define paths
-  scripts_dir <- file.path(pkg_dir, "scripts")
-  #target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
-  #target_bin_dir <- file.path(Sys.getenv("HOME"), "bin")
-  target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
-  cli_name <- "pong2"
-
-  # Make scripts executable
-  if (dir.exists(scripts_dir)) {
-    tryCatch({
-      # Make all scripts executable (including PONG2 without .sh extension)
-      scripts <- list.files(scripts_dir,
-                            pattern = "\\.sh$|^pong2$",
-                            full.names = TRUE)
-      Sys.chmod(scripts, mode = "0755")
-
-      # Install main CLI tool
-      cli_source <- file.path(scripts_dir, "pong2")
-      if (file.exists(cli_source)) {
-        if (!dir.exists(target_bin_dir)) {
-          dir.create(target_bin_dir, recursive = TRUE, mode = "0755")
-        }
-        cli_target <- file.path(target_bin_dir, cli_name)
-        file.copy(cli_source, cli_target, overwrite = TRUE)
-        Sys.chmod(cli_target, mode = "0755")
-
-        # Check PATH
-        if (!grepl(paste0(":", target_bin_dir, "|", target_bin_dir, ":"),
-                   Sys.getenv("PATH"))) {
-          packageStartupMessage(
-            "PONG2: Please add '", target_bin_dir, "' to your PATH:\n",
-            "  export PATH=\"", target_bin_dir, ":$PATH\""
-          )
-        }
-      }
-    }, error = function(e) {
-      packageStartupMessage("PONG2: Installation warning - ", e$message)
-    })
-  }
-}
+# setup_PONG2 <- function() {
+#   # Get installation directory
+#   pkg_dir <- system.file(package = "PONG2")
+# 
+#   # Check if we're actually installed (not just sourced)
+#   if (pkg_dir == "") {
+#     packageStartupMessage("PONG2: Development mode - skipping binary installation")
+#     return(invisible(NULL))
+#   }
+# 
+#   # Define paths
+#   scripts_dir <- file.path(pkg_dir, "scripts")
+#   #target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
+#   #target_bin_dir <- file.path(Sys.getenv("HOME"), "bin")
+#   target_bin_dir <- file.path(Sys.getenv("HOME"), ".local", "bin")
+#   cli_name <- "pong2"
+# 
+#   # Make scripts executable
+#   if (dir.exists(scripts_dir)) {
+#     tryCatch({
+#       # Make all scripts executable (including PONG2 without .sh extension)
+#       scripts <- list.files(scripts_dir,
+#                             pattern = "\\.sh$|^pong2$",
+#                             full.names = TRUE)
+#       Sys.chmod(scripts, mode = "0755")
+# 
+#       # Install main CLI tool
+#       cli_source <- file.path(scripts_dir, "pong2")
+#       if (file.exists(cli_source)) {
+#         if (!dir.exists(target_bin_dir)) {
+#           dir.create(target_bin_dir, recursive = TRUE, mode = "0755")
+#         }
+#         cli_target <- file.path(target_bin_dir, cli_name)
+#         file.copy(cli_source, cli_target, overwrite = TRUE)
+#         Sys.chmod(cli_target, mode = "0755")
+# 
+#         # Check PATH
+#         if (!grepl(paste0(":", target_bin_dir, "|", target_bin_dir, ":"),
+#                    Sys.getenv("PATH"))) {
+#           packageStartupMessage(
+#             "PONG2: Please add '", target_bin_dir, "' to your PATH:\n",
+#             "  export PATH=\"", target_bin_dir, ":$PATH\""
+#           )
+#         }
+#       }
+#     }, error = function(e) {
+#       packageStartupMessage("PONG2: Installation warning - ", e$message)
+#     })
+#   }
+# }
 
 
 #' @export
@@ -3701,5 +3719,5 @@ setup_PONG2 <- function() {
 
 #' @export
 .onLoad <- function(lib, pkg){
-  setup_PONG2()
+  #setup_PONG2()
 }
