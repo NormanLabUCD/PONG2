@@ -32,7 +32,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">PONG2</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.0.1</span>
       </span>
     </div>
 
@@ -52,7 +52,10 @@
       <a href="../articles/PONG2-basics.html">PONG2 Basics: Installation, Quick Start, and Core Usage</a>
     </li>
     <li>
-      <a href="../articles/PONG2-imputation.html">PONG2 Imputation: Step-by-Step Workflow</a>
+      <a href="../articles/PONG2-imputation.html">PONG2 Imputation Workflow</a>
+    </li>
+    <li>
+      <a href="../articles/PONG2-R-api.html">PONG2 R API: Direct R Usage with Example Data</a>
     </li>
     <li>
       <a href="../articles/PONG2-training.html">PONG2 Training: Building Custom KIR Prediction Models</a>
@@ -222,7 +225,13 @@ add it to your PATH:</p>
 </h3>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://normanlabucd.github.io/PONG2/" class="external-link">PONG2</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"PONG2"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">#&gt; PONG2: Please add '/home/suraju/.local/bin' to your PATH:</span></span>
+<span><span class="co">#&gt;   export PATH="/home/suraju/.local/bin:$PATH"</span></span>
+<span><span class="co">#&gt; ** initializing environment</span></span>
+<span><span class="co">#&gt; PONG2 (Genotype Imputation with Attribute Bagging): v2.0.0</span></span>
+<span><span class="co">#&gt; Supported by Streaming SIMD Extensions 2 (SSE2)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"PONG2"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] '1.0.1'</span></span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">pong2</span> version</span></code></pre></div>
 <hr>
 </div>
