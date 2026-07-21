@@ -315,7 +315,8 @@ imputation() {
     [[ -f "${input_vcf}.tbi" ]] || tabix -f "$input_vcf"
 
     local vcf_chr
-    vcf_chr=$(zcat "$input_vcf" | grep -v "^#" | head -1 | awk '{print $1}')
+    #vcf_chr=$(set +o pipefail; zcat "$input_vcf" | grep -v "^#" | head -1 | awk '{print $1}')
+    vcf_chr=$(set +o pipefail; zcat "$input_vcf" 2>/dev/null | grep -v "^#" 2>/dev/null | head -1 | awk '{print $1}')
     if [[ "$ASSEMBLY" == "hg38" && "$vcf_chr" != chr* ]]; then
       log_warn "Fixing missing chr prefix for hg38..."
       zcat "$input_vcf" | \
