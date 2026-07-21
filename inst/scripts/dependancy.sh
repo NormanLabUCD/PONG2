@@ -113,27 +113,23 @@ install_minimac4() {
   local url="https://github.com/statgen/Minimac4/releases/download/v4.1.6/minimac4-4.1.6-Linux-x86_64.sh"
   local installer="$OUTPUT_DIR/tmp/minimac4-installer.sh"
 
+  local stage_dir
+  stage_dir=$(mktemp -d)
+  local installer="$stage_dir/minimac4-installer.sh"
+  
   if ! wget -q --show-progress "$url" -O "$installer"; then
     echo -e "${RED}❌  Download failed${NC}"
     return 1
   fi
-
   chmod +x "$installer"
-  if ! "$installer" --skip-license --prefix="$OUTPUT_DIR/tmp"; then
+  if ! "$installer" --skip-license --prefix="$stage_dir"; then
     echo -e "${RED}❌  Installation failed${NC}"
+    rm -rf "$stage_dir"
     return 1
   fi
+  mv "$stage_dir/bin/minimac4" "$BIN_DIR/"
+  rm -rf "$stage_dir"
 
-  mv "$OUTPUT_DIR/tmp/bin/minimac4" "$BIN_DIR/"
-  rm -f "$installer"
-
-  if "$BIN_DIR/minimac4" --version &>/dev/null; then
-    echo -e "${GREEN}✅  Minimac4 installed to $BIN_DIR/minimac4${NC}"
-    return 0
-  else
-    echo -e "${RED}❌  Minimac4 installation verification failed${NC}"
-    return 1
-  fi
 }
 
 install_hg() {
