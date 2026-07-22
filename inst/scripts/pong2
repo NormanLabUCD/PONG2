@@ -426,10 +426,20 @@ _minimac4_impute() {
   local input_vcf="$1"
   local filename="$2"
 
+  PONG2_DATA_DIR=$(Rscript -e 'cat(tools::R_user_dir("PONG2", which = "data"))')
+  ref_dir="$PONG2_DATA_DIR/reference"
+
   if [[ ! -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ]]; then
+    # Check reference panel exists before attempting imputation
+    if ! ls "$ref_dir/"*.msav 1>/dev/null 2>&1; then
+      log_error "No reference panel (.msav) found in $ref_dir"
+      ##log_error "Run: pong2 setup-ref --assembly $ASSEMBLY to download it"
+      return 1
+    fi
+  
     log_info "Running minimac4 imputation..."
     run_minimac4_416 \
-      "$PONG2_root/extdata/$ASSEMBLY/"*.msav \
+      "$ref_dir/"*.msav \
       "$input_vcf" \
       --region "${chr}:${start}-${end}" \
       -o "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
@@ -437,7 +447,6 @@ _minimac4_impute() {
       -t "$THREADS" \
       -e "$OUTPUT_DIR/tmp/empirical.imputed_$filename.vcf.gz" \
       --format DS
-
     mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
        "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz"
     log_info "Minimac4 imputation complete"

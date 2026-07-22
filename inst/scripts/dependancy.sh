@@ -36,8 +36,16 @@ else
   ref_tbi_url="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV/${HG38_REF}.vcf.gz.tbi"
 fi
 
-ref_dir="$PONG2_root/extdata/$ASSEMBLY"
-ref_msav="$ref_dir/$ref_file.msav"
+#ref_dir="$PONG2_root/extdata/$ASSEMBLY"
+#ref_msav="$ref_dir/$ref_file.msav"
+
+# Get CRAN-approved user data dir from R (same as tools::R_user_dir("PONG2", "data"))
+PONG2_DATA_DIR=$(Rscript -e 'cat(tools::R_user_dir("PONG2", which = "data"))')
+mkdir -p "$PONG2_DATA_DIR/reference"
+# Use as ref_dir
+ref_dir="$PONG2_DATA_DIR/reference"
+ref_msav="$ref_dir/${ref_file}.msav"
+
 
 # ── Required tools ────────────────────────────────────────────────────────────
 if [[ "$TOOL" == "minimac4" ]]; then
