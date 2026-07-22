@@ -436,7 +436,6 @@ _minimac4_impute() {
       -c 1000000 \
       -t "$THREADS" \
       -e "$OUTPUT_DIR/tmp/empirical.imputed_$filename.vcf.gz" \
-      #--min-r2 0.3\
       --format DS
 
     mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
