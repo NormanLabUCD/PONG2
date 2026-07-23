@@ -147,13 +147,23 @@ preprocess_plink() {
   n_dups=$(wc -l < "$outdir/tmp/snp_duplicate.txt")
   log_info "Duplicate SNPs removed: $n_dups"
 
-  # Step 4: Exclude duplicates
-  plink2 \
+  # # Step 4: Exclude duplicates
+  # plink2 \
+  #   --bfile "$outdir/tmp/temp" \
+  #   --exclude "$outdir/tmp/snp_duplicate.txt" \
+  #   --silent \
+  #   --make-bed \
+  #   --out "$outdir/tmp/chr19"
+    
+ plink2 \
     --bfile "$outdir/tmp/temp" \
-    --exclude "$outdir/tmp/snp_duplicate.txt" \
+    --set-all-var-ids '@:#:$r:$a' \
+    --new-id-max-allele-len 317 \
+    --rm-dup exclude-all \
     --silent \
     --make-bed \
     --out "$outdir/tmp/chr19"
+
 
   local n_variants
   n_variants=$(wc -l < "$outdir/tmp/chr19.bim")
