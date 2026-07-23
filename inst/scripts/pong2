@@ -526,10 +526,12 @@ kir_imputation() {
 
   plink2 \
     --bfile "$plink_file" \
-    --exclude "${plink_file}.snp_dup.txt" \
+    --set-all-var-ids '@:#:$r:$a' \
+    --new-id-max-allele-len 317 \
+    --rm-dup exclude-all \
+    --silent \
     --make-bed \
-    --out "${plink_file}.nodup" \
-    --silent
+    --out "${plink_file}.nodup"
 
   # Copy final plink files to output
   cp "${plink_file}.nodup."* "$OUTPUT_DIR/"
