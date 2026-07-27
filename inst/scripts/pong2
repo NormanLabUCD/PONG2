@@ -474,7 +474,7 @@ _imputed_vcf_to_plink() {
   log_info "Converting imputed VCF to PLINK format..."
   plink2 \
     --vcf "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" dosage=DS \
-    --import-dosage-certainty 0.8 \
+    --import-dosage-certainty 0.5 \
     --make-pgen \
     --out "$OUTPUT_DIR/tmp/imputed.$filename" \
     --silent

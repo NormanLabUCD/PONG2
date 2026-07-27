@@ -5,7 +5,7 @@ suppressPackageStartupMessages(library(PONG2))
 # =============================================================================
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 6) {
-  stop("Usage: predict.R <input> <output> <locus> <assembly> <filter> <threads> [model_path]")
+  stop("Usage: predict <input> <output> <locus> <assembly> <filter> <threads> [model_path]")
 }
 input      <- args[1]
 output     <- args[2]
@@ -142,22 +142,32 @@ for (i in seq_len(n_chunks)) {
                 i, n_chunks, idx_start, idx_end, length(chunk_ids)))
   }
   
-  # Write temporary FAM containing only this chunk's samples
-  tmp_fam <- tempfile(fileext = ".fam")
+  # Write keep file (FID IID) for plink2 --keep
+  tmp_keep   <- tempfile()
+  tmp_prefix <- tempfile()
   
   chunk_results[[i]] <- tryCatch({
-    write.table(
-      fam_data[fam_data[[2]] %in% chunk_ids, ],
-      tmp_fam,
-      row.names = FALSE, col.names = FALSE, quote = FALSE
-    )
+    # Write keep file — plink2 needs FID + IID
+    keep_df <- fam_data[fam_data[[2]] %in% chunk_ids, c(1, 2)]
+    write.table(keep_df, tmp_keep,
+                row.names = FALSE, col.names = FALSE, quote = FALSE)
     
-    # Load → subset KIR region → predict
-    # Each step operates on the chunk only — full genotype matrix
-    # never accumulates across chunks, keeping memory flat
-    genotype   <- hlaBED2Geno(bed.fn, tmp_fam, bim.fn,
-                              import.chr = "19",
-                              assembly   = assembly)
+    # Use plink2 to extract chunk into temporary BED/FAM/BIM
+    plink2_cmd <- sprintf(
+      "plink2 --bfile %s --keep %s --make-bed --out %s --silent",
+      shQuote(input), shQuote(tmp_keep), shQuote(tmp_prefix)
+    )
+    ret <- system(plink2_cmd)
+    if (ret != 0) stop("plink2 extraction failed for chunk ", i)
+    
+    # Now load the properly subsetted BED
+    genotype   <- hlaBED2Geno(
+      paste0(tmp_prefix, ".bed"),
+      paste0(tmp_prefix, ".fam"),
+      paste0(tmp_prefix, ".bim"),
+      import.chr = "19",
+      assembly   = assembly
+    )
     chunk_geno <- hlaGenoSubsetFlank(genotype, locus,
                                      region * 5000,
                                      assembly = assembly)
@@ -171,7 +181,9 @@ for (i in seq_len(n_chunks)) {
     warning(sprintf("Chunk %d failed: %s", i, e$message))
     NULL
   }, finally = {
-    unlink(tmp_fam)   # always clean up tmp FAM regardless of success/failure
+    # Clean up all temp files
+    unlink(tmp_keep)
+    unlink(paste0(tmp_prefix, c(".bed", ".bim", ".fam", ".log")))
   })
 }
 
