@@ -382,9 +382,10 @@ imputation() {
     "$LOCUS" \
     "$FILTER" \
     "$PONG2_root" \
-    "$MODEL_PATH")
+    "$MODEL_PATH" 2>/dev/null | grep -E '^[0-9]+\.?[0-9]*$' | tail -1)
 
   local matching_pct
+  echo $matching
   matching_pct=$(awk "BEGIN {printf \"%.2f\", $matching * 100}")
   log_info "SNP match rate: ${matching_pct}%"
 
