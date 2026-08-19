@@ -336,11 +336,19 @@ You are free to use, modify, and distribute PONG2, provided that derivative work
 
 ## Citation
 
-If you use PONG2 in your research, please cite:
-
-> Sadeeq SA, Leaton LA, Kichula KM, Farias TDJ, Font-Porterias N, Pollock NR, the Colorado Center for Personalized Medicine, Collora CE, Castelli EC, Gignoux CR, Norman PJ.
-> **PONG 2.0: Allele Imputation for the Killer Cell Immunoglobulin-Like Receptors.**
-> *Manuscript in preparation*, 2026.
+@article{sadeeq2026pong2,
+  author  = {Sadeeq, Suraju A and Leaton, Laura A and Kichula, Katherine M and
+             Farias, Ticiana D J and Font-Porterias, Neus and Pollock, Nicholas R and
+             {the Colorado Center for Personalized Medicine} and Collora, Christopher E and
+             Castelli, Erick C and Gignoux, Christopher R and Norman, Paul J},
+  title   = {{PONG} 2.0: allele imputation for the killer cell immunoglobulin-like receptors},
+  journal = {Human Molecular Genetics},
+  volume  = {35},
+  number  = {17},
+  pages   = {ddag075},
+  year    = {2026},
+  doi     = {10.1093/hmg/ddag075}
+}
 
 ---
 
