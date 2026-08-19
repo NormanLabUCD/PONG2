@@ -336,7 +336,6 @@ You are free to use, modify, and distribute PONG2, provided that derivative work
 
 ## Citation
 
-## Citation
 
 If you use PONG2.0 in your research, please cite:
 
@@ -361,7 +360,7 @@ If you use PONG2.0 in your research, please cite:
 }
 ```
 </details>
----
+
 
 ## Contact & Support
 
