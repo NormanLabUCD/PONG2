@@ -15,6 +15,7 @@ kirSplit    <- args[8]
 kirmaf      <- args[9]
 mac         <- args[10]
 locusregion <- args[11]
+flankbp     <- if (length(args) >= 12) args[12] else "Null"
 
 # Handle Defaults and Numeric Conversions
 if(nclassifier == "Null"){
@@ -41,6 +42,15 @@ if(mac == "Null"){
   mac <- as.numeric(mac)
 }
 
+# Flank (bp each side of the gene). SNPs in LD with the target allele extend
+# well beyond the gene body, so training on the gene alone loses most of the
+# signal. HIBAG's HLA models use 500 kb each side (Zheng et al. 2014, Fig. S2).
+if(flankbp == "Null"){
+  flank <- 500000
+} else {
+  flank <- as.numeric(flankbp)
+}
+
 # Cluster setup using the threads argument
 if(threads == "Null"){
   num_threads <- 4
@@ -63,7 +73,7 @@ if(assembly == "hg19" && locusregion == "Null"){
   ), `KIR3DP1` = c(55297540, 55303593), `KIR3DL1S1` = c(55327478, 55378569),
   `KIR2DL23` = c(55249743, 55264553))
   region = kir_position[[locus]]
-
+  
 }else if(assembly == "hg38" && locusregion == "Null"){
   kir_position = list(`KIR3DL3` = c(54724442, 54736632), `KIR3DL2` = c(54850443, 54867207
   ), `KIR3DL1` = c(54816468, 54830778), `KIR2DL5A` = c(55271881, 55371344
@@ -77,7 +87,7 @@ if(assembly == "hg19" && locusregion == "Null"){
   region = kir_position[[locus]]
 }else{
   region = as.numeric(unlist(strsplit(locusregion, "-")))
-
+  
 }
 
 
@@ -97,20 +107,20 @@ frequency_filter <- function(kir_data, locus, filtered_freq){
     stop("Locus '", locus, "' not found in KIR file.\nAvailable loci: ", paste(available, collapse = ", "), "\nCheck --locus matches column names in --kfile (e.g. KIR3DL1_h1, KIR3DL1_h2)")
   }
   kir_data = kir_data[, c("Sample", allele1, allele2)]
-
+  
   for (col in names(kir_data)) {
     kir_data[[col]] <- gsub(paste0(locus, "\\*null"), paste0(locus, "\\*0000"), kir_data[[col]])
   }
   kir_data <-  kir_data[!apply(kir_data, 1, function(row) any(row == paste0(locus, "*new"))), ]
   kir_data <-  kir_data[!apply(kir_data, 1, function(row) any(row == paste0(locus, "*unresolved"))), ]
-
+  
   allele_freqs <- kir_data %>%
     select(all_of(c(allele1, allele2))) %>%
     pivot_longer(everything()) %>%
     count(value) %>%
     mutate(freq = n / sum(n)) %>%
     filter(freq > filtered_freq)
-
+  
   filtered_data <- kir_data[
     kir_data[[allele1]] %in% allele_freqs$value & kir_data[[allele2]] %in% allele_freqs$value,
   ]
@@ -146,10 +156,27 @@ KIR_type <- hlaAllele(
 #Split into training and validation sets
 kirtab <- hlaSplitAllele(KIR_type, train.prop=kirSplit)
 
-# Select best KIR region
-kir_geno_pos <- geno19$snp.position[geno19$snp.position >= min(region) & geno19$snp.position <= max(region)]
-kir_geno <- hlaGenoSubset(geno19, snp.sel= unique(match(kir_geno_pos, geno19$snp.position)))
+# Select best KIR region, with flanking sequence each side
+region_start <- min(region) - flank
+region_end   <- max(region) + flank
+
+kir_geno_pos <- geno19$snp.position[geno19$snp.position >= region_start &
+                                      geno19$snp.position <= region_end]
+kir_geno <- hlaGenoSubset(geno19, snp.sel = unique(match(kir_geno_pos, geno19$snp.position)))
 snpId <- kir_geno$snp.id
+
+# Warn if the requested window runs past the edge of the available data
+data_min <- min(geno19$snp.position)
+data_max <- max(geno19$snp.position)
+if(region_start < data_min || region_end > data_max){
+  cat("WARNING: flank truncated by data boundary\n")
+  cat(sprintf("  requested window: %d - %d\n", region_start, region_end))
+  cat(sprintf("  data available:   %d - %d\n", data_min, data_max))
+  if(region_start < data_min)
+    cat(sprintf("  upstream short by:   %d bp\n", data_min - region_start))
+  if(region_end > data_max)
+    cat(sprintf("  downstream short by: %d bp\n", region_end - data_max))
+}
 
 # Divide into train and test sets
 train.geno <- hlaGenoSubset(geno19, snp.sel = match(snpId, geno19$snp.id), samp.sel = na.omit(match(kirtab$training$value$sample.id, geno19$sample.id)))
@@ -158,7 +185,7 @@ test.geno <- hlaGenoSubset(geno19, samp.sel=na.omit(match(kirtab$validation$valu
 # 2. Add check for empty SNP region
 if(length(kir_geno_pos) == 0){
   stopCluster(cluster)
-  stop(paste("No SNPs found in region", min(region), "-", max(region),
+  stop(paste("No SNPs found in region", region_start, "-", region_end,
              "for locus:", locus))
 }
 
@@ -169,7 +196,8 @@ if(length(train.geno$sample.id) < 10){
              length(train.geno$sample.id), "for locus:", locus))
 }
 
-cat(paste(locus, "SNPs:"), length(kir_geno_pos), "\n")
+cat(paste(locus, "SNPs:"), length(kir_geno_pos),
+    sprintf("(gene %d-%d, flank +/-%d bp)\n", min(region), max(region), flank))
 cat("Train Samples:", length(train.geno$sample.id), "\n")
 cat("Test Samples:", length(test.geno$sample.id), "\n")
 cat("--------------------------\n\n")
