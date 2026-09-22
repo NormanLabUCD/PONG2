@@ -42,11 +42,13 @@ if(mac == "Null"){
   mac <- as.numeric(mac)
 }
 
-# Flank (bp each side of the gene). SNPs in LD with the target allele extend
-# well beyond the gene body, so training on the gene alone loses most of the
-# signal. HIBAG's HLA models use 500 kb each side (Zheng et al. 2014, Fig. S2).
+# Optional flank (bp each side of the kir_position window). Defaults to 0.
+# Tested: adding a 500 kb flank for KIR3DL2 (331 -> 10,647 SNPs) reduced
+# out-of-bag accuracy from ~95% to ~88%, as attribute bagging then draws
+# mostly uninformative flanking SNPs. Unlike HLA (HIBAG uses 500 kb), KIR
+# performs best on targeted windows, so flanking is off unless requested.
 if(flankbp == "Null"){
-  flank <- 500000
+  flank <- 0
 } else {
   flank <- as.numeric(flankbp)
 }
@@ -156,7 +158,7 @@ KIR_type <- hlaAllele(
 #Split into training and validation sets
 kirtab <- hlaSplitAllele(KIR_type, train.prop=kirSplit)
 
-# Select best KIR region, with flanking sequence each side
+# Select best KIR region (optionally widened by `flank` bp each side)
 region_start <- min(region) - flank
 region_end   <- max(region) + flank
 
@@ -165,11 +167,13 @@ kir_geno_pos <- geno19$snp.position[geno19$snp.position >= region_start &
 kir_geno <- hlaGenoSubset(geno19, snp.sel = unique(match(kir_geno_pos, geno19$snp.position)))
 snpId <- kir_geno$snp.id
 
-# Warn if the requested window runs past the edge of the available data
+# Warn if the requested window runs past the edge of the available data.
+# Also catches kir_position entries whose coordinates do not match the
+# assembly of the input data.
 data_min <- min(geno19$snp.position)
 data_max <- max(geno19$snp.position)
 if(region_start < data_min || region_end > data_max){
-  cat("WARNING: flank truncated by data boundary\n")
+  cat("WARNING: requested window extends beyond the available data\n")
   cat(sprintf("  requested window: %d - %d\n", region_start, region_end))
   cat(sprintf("  data available:   %d - %d\n", data_min, data_max))
   if(region_start < data_min)
@@ -196,8 +200,12 @@ if(length(train.geno$sample.id) < 10){
              length(train.geno$sample.id), "for locus:", locus))
 }
 
-cat(paste(locus, "SNPs:"), length(kir_geno_pos),
-    sprintf("(gene %d-%d, flank +/-%d bp)\n", min(region), max(region), flank))
+if(flank > 0){
+  cat(paste(locus, "SNPs:"), length(kir_geno_pos),
+      sprintf("(window %d-%d, flank +/-%d bp)\n", min(region), max(region), flank))
+} else {
+  cat(paste(locus, "SNPs:"), length(kir_geno_pos), "\n")
+}
 cat("Train Samples:", length(train.geno$sample.id), "\n")
 cat("Test Samples:", length(test.geno$sample.id), "\n")
 cat("--------------------------\n\n")
