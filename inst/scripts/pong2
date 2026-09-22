@@ -107,67 +107,116 @@ check_plink2() {
 # =============================================================================
 preprocess_plink() {
   local bfile="$1" outdir="$2" kir_file="$3"
+  local tmp="$outdir/tmp"
+  local min_samples="${PONG2_MIN_SAMPLES:-10}"   # override via env if needed
 
   log_step "Preprocessing PLINK files"
 
-  # Step 1: Sample keep file from KIR CSV (skip header, strip quotes)
-  log_info "Creating sample keep file..."
-  awk -F',' 'NR>1 {gsub(/"/, "", $1); print $1, $1}' \
-    "$kir_file" > "$outdir/tmp/kir_sample.txt"
+  # ── Step 0: Validate inputs ───────────────────────────────────────────────
+  local ext
+  for ext in bed bim fam; do
+    [[ -f "${bfile}.${ext}" ]] || die "PLINK file not found: ${bfile}.${ext}"
+  done
+  [[ -f "$kir_file" ]] || die "KIR file not found: $kir_file"
+  mkdir -p "$tmp"
+
+  # Warn if the KIR CSV header doesn't look as expected
+  local header_col1
+  header_col1=$(head -1 "$kir_file" | awk -F',' '{gsub(/"|\r/, "", $1); print $1}')
+  if [[ "$header_col1" != "Sample" ]]; then
+    log_warn "First column of KIR file header is '$header_col1' (expected 'Sample')."
+    log_warn "  Assuming column 1 contains sample IDs and row 1 is a header."
+  fi
+
+  # ── Step 1: Read KIR sample IDs (skip header, strip quotes/CRLF/whitespace)
+  log_info "Reading KIR sample IDs..."
+  awk -F',' 'NR>1 {
+      gsub(/"|\r/, "", $1)
+      gsub(/^[ \t]+|[ \t]+$/, "", $1)
+      if ($1 != "") print $1
+  }' "$kir_file" | sort -u > "$tmp/kir_sample.txt"
 
   local n_kir
-  n_kir=$(wc -l < "$outdir/tmp/kir_sample.txt")
+  n_kir=$(wc -l < "$tmp/kir_sample.txt")
+  (( n_kir > 0 )) || die "No sample IDs found in $kir_file"
   log_info "KIR samples: $n_kir"
 
-  # Step 2: Subset to KIR samples
+  # ── Step 2: Build keep file from the .fam, matched on IID (column 2) ──────
+  # Uses the .fam's own FID, so this works whether FID is 0 (e.g. 1KGP),
+  # equal to IID, or a real family ID.
+  log_info "Matching KIR samples to PLINK .fam..."
+  awk 'NR==FNR { want[$1]=1; next }
+       ($2 in want) { print $1, $2 }' \
+      "$tmp/kir_sample.txt" "${bfile}.fam" > "$tmp/kir_keep.txt"
+
+  local n_match
+  n_match=$(wc -l < "$tmp/kir_keep.txt")
+
+  if (( n_match == 0 )); then
+    log_error "No KIR samples found in ${bfile}.fam"
+    log_error "  .fam format (FID IID): $(head -1 "${bfile}.fam" | awk '{print $1, $2}')"
+    log_error "  KIR sample ID example: $(head -1 "$tmp/kir_sample.txt")"
+    die "Sample IDs in the KIR file must match the .fam IID column (column 2)."
+  fi
+
+  # Same IID in more than one family would be kept twice
+  if (( n_match > n_kir )); then
+    log_warn "$((n_match - n_kir)) duplicate IIDs in ${bfile}.fam (same IID," \
+             "different FID) — all copies retained."
+  fi
+
+  if (( n_match < n_kir )); then
+    awk 'NR==FNR { have[$2]=1; next } !($1 in have)' \
+        "${bfile}.fam" "$tmp/kir_sample.txt" > "$tmp/kir_missing.txt"
+    log_warn "$((n_kir - n_match)) KIR samples not in PLINK data — excluded" \
+             "(see $tmp/kir_missing.txt)"
+  fi
+
+  # ── Step 3: Subset PLINK to KIR samples ───────────────────────────────────
   log_info "Subsetting PLINK to KIR samples..."
   plink2 \
     --bfile "$bfile" \
-    --keep "$outdir/tmp/kir_sample.txt" \
+    --keep "$tmp/kir_keep.txt" \
     --silent \
     --make-bed \
-    --out "$outdir/tmp/temp"
+    --out "$tmp/temp" \
+    || die "plink2 failed while subsetting samples (see $tmp/temp.log)"
 
   local n_retained
-  n_retained=$(wc -l < "$outdir/tmp/temp.fam")
+  n_retained=$(wc -l < "$tmp/temp.fam")
   log_info "Samples retained: $n_retained / $n_kir"
 
-  if [[ "$n_retained" -lt 10 ]]; then
-    log_warn "KIR sample ID example:  $(head -1 "$outdir/tmp/kir_sample.txt")"
-    log_warn "FAM sample ID example:  $(awk '{print $1, $2}' "$outdir/tmp/temp.fam" | head -1)"
-    die "Too few samples retained ($n_retained). Check sample ID format."
+  if (( n_retained < min_samples )); then
+    log_warn "KIR sample ID example: $(head -1 "$tmp/kir_sample.txt")"
+    log_warn "FAM sample ID example: $(head -1 "$tmp/temp.fam" | awk '{print $1, $2}')"
+    die "Too few samples retained ($n_retained < $min_samples) to train a model."
   fi
 
-  # Step 3: Remove duplicate SNPs
-  log_info "Removing duplicate SNPs..."
-  awk '{print $2}' "$outdir/tmp/temp.bim" | \
-    sort | uniq -d > "$outdir/tmp/snp_duplicate.txt"
+  # ── Step 4: Standardise variant IDs and remove duplicate variants ─────────
+  # IDs become chr:pos:ref:alt. exclude-mismatch keeps one copy of each
+  # duplicate when genotypes agree, and drops the whole group only when
+  # they conflict (exclude-all would discard good data too).
+  log_info "Standardising variant IDs and removing duplicate variants..."
 
-  local n_dups
-  n_dups=$(wc -l < "$outdir/tmp/snp_duplicate.txt")
-  log_info "Duplicate SNPs removed: $n_dups"
+  local n_before
+  n_before=$(wc -l < "$tmp/temp.bim")
 
-  # # Step 4: Exclude duplicates
-  # plink2 \
-  #   --bfile "$outdir/tmp/temp" \
-  #   --exclude "$outdir/tmp/snp_duplicate.txt" \
-  #   --silent \
-  #   --make-bed \
-  #   --out "$outdir/tmp/chr19"
-    
- plink2 \
-    --bfile "$outdir/tmp/temp" \
+  plink2 \
+    --bfile "$tmp/temp" \
     --set-all-var-ids '@:#:$r:$a' \
     --new-id-max-allele-len 317 \
-    --rm-dup exclude-all \
+    --rm-dup exclude-mismatch \
     --silent \
     --make-bed \
-    --out "$outdir/tmp/chr19"
-
+    --out "$tmp/chr19" \
+    || die "plink2 failed while removing duplicates (see $tmp/chr19.log)"
 
   local n_variants
-  n_variants=$(wc -l < "$outdir/tmp/chr19.bim")
+  n_variants=$(wc -l < "$tmp/chr19.bim")
+  log_info "Duplicate variants removed: $((n_before - n_variants))"
   log_info "Final variants: $n_variants"
+
+  (( n_variants > 0 )) || die "No variants remaining after preprocessing."
 }
 
 # =============================================================================
