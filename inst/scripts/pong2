@@ -120,28 +120,38 @@ preprocess_plink() {
   [[ -f "$kir_file" ]] || die "KIR file not found: $kir_file"
   mkdir -p "$tmp"
 
-  # Warn if the KIR CSV header doesn't look as expected
+  # ── Step 1: Normalise the KIR file ────────────────────────────────────────
+  # Strips a UTF-8 BOM (added by Excel "CSV UTF-8" exports) and Windows
+  # CRLF line endings, so every later step works on clean input.
+  local kir_clean="$tmp/kir_clean.csv"
+  awk 'NR==1 { sub(/^\xef\xbb\xbf/, "") } { sub(/\r$/, ""); print }' \
+      "$kir_file" > "$kir_clean"
+
+  if [[ "$(head -c 3 "$kir_file" | od -An -tx1 | tr -d ' ')" == "efbbbf" ]]; then
+    log_info "Removed UTF-8 BOM from KIR file header."
+  fi
+
   local header_col1
-  header_col1=$(head -1 "$kir_file" | awk -F',' '{gsub(/"|\r/, "", $1); print $1}')
+  header_col1=$(head -1 "$kir_clean" | awk -F',' '{gsub(/"/, "", $1); print $1}')
   if [[ "$header_col1" != "Sample" ]]; then
     log_warn "First column of KIR file header is '$header_col1' (expected 'Sample')."
     log_warn "  Assuming column 1 contains sample IDs and row 1 is a header."
   fi
 
-  # ── Step 1: Read KIR sample IDs (skip header, strip quotes/CRLF/whitespace)
+  # ── Step 2: Read KIR sample IDs (skip header, strip quotes/whitespace) ────
   log_info "Reading KIR sample IDs..."
   awk -F',' 'NR>1 {
-      gsub(/"|\r/, "", $1)
+      gsub(/"/, "", $1)
       gsub(/^[ \t]+|[ \t]+$/, "", $1)
       if ($1 != "") print $1
-  }' "$kir_file" | sort -u > "$tmp/kir_sample.txt"
+  }' "$kir_clean" | sort -u > "$tmp/kir_sample.txt"
 
   local n_kir
   n_kir=$(wc -l < "$tmp/kir_sample.txt")
   (( n_kir > 0 )) || die "No sample IDs found in $kir_file"
   log_info "KIR samples: $n_kir"
 
-  # ── Step 2: Build keep file from the .fam, matched on IID (column 2) ──────
+  # ── Step 3: Build keep file from the .fam, matched on IID (column 2) ──────
   # Uses the .fam's own FID, so this works whether FID is 0 (e.g. 1KGP),
   # equal to IID, or a real family ID.
   log_info "Matching KIR samples to PLINK .fam..."
@@ -172,7 +182,7 @@ preprocess_plink() {
              "(see $tmp/kir_missing.txt)"
   fi
 
-  # ── Step 3: Subset PLINK to KIR samples ───────────────────────────────────
+  # ── Step 4: Subset PLINK to KIR samples ───────────────────────────────────
   log_info "Subsetting PLINK to KIR samples..."
   plink2 \
     --bfile "$bfile" \
@@ -192,7 +202,7 @@ preprocess_plink() {
     die "Too few samples retained ($n_retained < $min_samples) to train a model."
   fi
 
-  # ── Step 4: Standardise variant IDs and remove duplicate variants ─────────
+  # ── Step 5: Standardise variant IDs and remove duplicate variants ─────────
   # IDs become chr:pos:ref:alt. exclude-mismatch keeps one copy of each
   # duplicate when genotypes agree, and drops the whole group only when
   # they conflict (exclude-all would discard good data too).
