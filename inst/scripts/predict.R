@@ -149,13 +149,13 @@ if (length(mobj$snp.position) != length(mobj$snp.id))
 mobj$snp.id   <- rebuild_ids(mobj$snp.position)
 .n_model_dup  <- sum(duplicated(mobj$snp.id))
 
-cat("Model SNP IDs rebuilt from position: ", length(mobj$snp.id),
-    " SNPs (was '", .shape_before, "', e.g. ", .example_from, " -> ",
-    mobj$snp.id[1], ")\n", sep = "")
+# cat("Model SNP IDs rebuilt from position: ", length(mobj$snp.id),
+#     " SNPs (was '", .shape_before, "', e.g. ", .example_from, " -> ",
+#     mobj$snp.id[1], ")\n", sep = "")
 
 if (.n_model_dup > 0) {
   cat("*** WARNING:", .n_model_dup, "model SNPs share a position with another.\n")
-  cat("    Their rebuilt IDs collide; HIBAG keeps the first and treats the rest\n")
+  cat("    Their rebuilt IDs collide; PONG keeps the first and treats the rest\n")
   cat("    as missing. Expect that many SNPs to be unusable.\n\n")
 }
 rm(.shape_before, .example_from, .n_model_dup)
@@ -202,12 +202,12 @@ bim_ids <- rebuild_ids(bim_pos)
 
 n_id_hit <- sum(model_ids %in% bim_ids)
 
-cat("--- Model / data overlap ---\n")
-cat("Model SNPs:      ", length(model_ids), "  e.g. ", head(model_ids, 1), "\n", sep = "")
-cat("Data variants:   ", length(bim_ids),   "  e.g. ", head(bim_ids, 1),   "\n", sep = "")
-cat(sprintf("Model SNPs present: %d / %d (%.2f%%)\n",
-            n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
-cat("----------------------------\n\n")
+# cat("--- Model / data overlap ---\n")
+# cat("Model SNPs:      ", length(model_ids), "  e.g. ", head(model_ids, 1), "\n", sep = "")
+# cat("Data variants:   ", length(bim_ids),   "  e.g. ", head(bim_ids, 1),   "\n", sep = "")
+# cat(sprintf("Model SNPs present: %d / %d (%.2f%%)\n",
+#             n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
+# cat("----------------------------\n\n")
 
 if (n_id_hit == 0) {
   stop("No model SNP positions are present in the data.\n",
