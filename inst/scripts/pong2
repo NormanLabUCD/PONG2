@@ -219,19 +219,31 @@ preprocess_plink() {
   fi
 
   # ── Step 5: Standardise variant IDs and remove duplicate variants ─────────
-  # IDs become chr:pos:ref:alt. exclude-mismatch keeps one copy of each
-  # duplicate when genotypes agree, and drops the whole group only when
-  # they conflict (exclude-all would discard good data too).
-  log_info "Standardising variant IDs and removing duplicate variants..."
+  # IDs become chr:pos — position only, no alleles.
+  #
+  # HIBAG matches a model to a user's genotypes with
+  #     snp.sel <- match(model$snp.id, geno$snp.id)
+  # i.e. plain string equality on the ID. So the ID must be reproducible from
+  # the site alone. chr:pos:ref:alt is not: loading a .bed/.bim, plink2 has no
+  # REF/ALT information and treats A2 as a provisional REF, and A1 in a .bim is
+  # conventionally the cohort's minor allele. The same variant therefore
+  # becomes 19:55250000:A:G in one dataset and 19:55250000:G:A in another, and
+  # every such site is counted as missing at prediction time.
+  #
+  # rm-dup exclude-all is required once alleles leave the ID. A "duplicate" now
+  # means two different variants sharing one coordinate (multi-allelic sites,
+  # or a SNP and an indel together). Such a position cannot be resolved by
+  # position alone, so the whole group is dropped rather than keeping an
+  # arbitrary member whose alleles the model would then use.
+  log_info "Standardising variant IDs (chr:pos) and removing duplicates..."
 
   local n_before
   n_before=$(wc -l < "$tmp/temp.bim")
 
   plink2 \
     --bfile "$tmp/temp" \
-    --set-all-var-ids '@:#:$r:$a' \
-    --new-id-max-allele-len 317 \
-    --rm-dup exclude-mismatch \
+    --set-all-var-ids '@:#' \
+    --rm-dup exclude-all \
     --silent \
     --make-bed \
     --out "$tmp/chr19" \
@@ -241,6 +253,14 @@ preprocess_plink() {
   n_variants=$(wc -l < "$tmp/chr19.bim")
   log_info "Duplicate variants removed: $((n_before - n_variants))"
   log_info "Final variants: $n_variants"
+
+  # Variant IDs must be unique, or match() silently resolves a model SNP to
+  # whichever copy comes first.
+  local n_unique_ids
+  n_unique_ids=$(awk '{print $2}' "$tmp/chr19.bim" | sort -u | wc -l)
+  if (( n_unique_ids != n_variants )); then
+    die "Variant IDs are not unique after deduplication ($n_unique_ids unique of $n_variants)."
+  fi
 
   (( n_variants > 0 )) || die "No variants remaining after preprocessing."
 }
@@ -609,24 +629,35 @@ kir_imputation() {
 
   log_step "Running KIR prediction: $LOCUS"
 
-  # Standardize SNP IDs to chr:pos format
-  awk '{print $1, $1":"$4, $3, $4, $5, $6}' \
-    "${plink_file}.bim" > "${plink_file}.mod.bim"
-
-  # Find and remove duplicate SNP IDs
-  awk '{print $2}' "${plink_file}.mod.bim" | \
-    sort | uniq -d > "${plink_file}.snp_dup.txt"
-
-  mv "${plink_file}.mod.bim" "${plink_file}.bim"
-
+  # Standardise variant IDs to chr:pos and drop ambiguous positions.
+  # This must produce exactly the same ID for a site as preprocess_plink does
+  # during training, because HIBAG pairs model to data with
+  #     snp.sel <- match(model$snp.id, geno$snp.id)
+  # which is string equality. See the longer note in preprocess_plink for why
+  # allele-bearing IDs do not survive a change of dataset.
+  #
+  # plink2's --set-all-var-ids renames on load, before --rm-dup and before
+  # anything is written, so this single call replaces whatever IDs the input
+  # carried. (The awk that used to build chr:pos IDs here was overwritten by
+  # this same flag, and the .snp_dup.txt it produced was never read.)
   plink2 \
     --bfile "$plink_file" \
-    --set-all-var-ids '@:#:$r:$a' \
-    --new-id-max-allele-len 317 \
+    --set-all-var-ids '@:#' \
     --rm-dup exclude-all \
     --silent \
     --make-bed \
-    --out "${plink_file}.nodup"
+    --out "${plink_file}.nodup" \
+    || die "plink2 failed while standardising variant IDs (see ${plink_file}.nodup.log)"
+
+  # Variant IDs must be unique, or match() silently resolves a model SNP to
+  # whichever copy comes first.
+  local n_var n_uniq
+  n_var=$(wc -l < "${plink_file}.nodup.bim")
+  n_uniq=$(awk '{print $2}' "${plink_file}.nodup.bim" | sort -u | wc -l)
+  if (( n_var != n_uniq )); then
+    die "Variant IDs are not unique after deduplication ($n_uniq unique of $n_var)."
+  fi
+  log_info "Variants for prediction: $n_var (IDs chr:pos, unique)"
 
   # Copy final plink files to output, prefixed with the locus so that
   # concurrent runs sharing one --output directory write distinct files.

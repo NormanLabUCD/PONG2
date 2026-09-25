@@ -2448,8 +2448,6 @@ kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
 
 			#print(match(obj.id, geno.id))
             snp.sel <- match(obj.id, geno.id)
-            print(head(obj.id))
-            print(head(geno.id))
             snp.sel[duplicated(snp.sel)] <- NA_integer_
             snp.allele <- snp$snp.allele
             snp.allele[is.na(snp.allele)] <- ""

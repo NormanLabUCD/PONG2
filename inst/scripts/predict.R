@@ -127,7 +127,75 @@ if (requireNamespace("RcppParallel", quietly = TRUE)) {
 bed.fn <- paste0(input, ".bed")
 fam.fn <- paste0(input, ".fam")
 bim.fn <- paste0(input, ".bim")
-region <- 5
+region <- 5000
+
+# =============================================================================
+# PRE-FLIGHT: VARIANT ID NAMING
+# HIBAG pairs model to genotypes with match(model$snp.id, geno$snp.id) — plain
+# string equality. Both sides must therefore use the same ID scheme, which for
+# PONG2 models is chr:pos (e.g. 19:55314880). Allele-bearing IDs such as
+# 19:55314880:A:G are NOT interchangeable: REF/ALT come from each dataset's own
+# A1/A2 assignment, so the same site can be spelled either way and every such
+# SNP is then counted as missing.
+#
+# Checking here catches it before any prediction work is done, and covers the
+# case where predict.R is called directly or with a custom --model.
+# =============================================================================
+model_ids <- if (!is.null(mobj$snp.id)) mobj$snp.id else model$snp.id
+
+id_shape <- function(x) {
+  x <- x[!is.na(x) & nzchar(x)]
+  if (!length(x)) return("empty")
+  s <- head(x, 1000)
+  if      (all(grepl("^[^:]+:[0-9]+$", s)))                 "chr:pos"
+  else if (all(grepl("^[^:]+:[0-9]+:[^:]+:[^:]+$", s)))     "chr:pos:ref:alt"
+  else if (all(grepl("^rs[0-9]+$", s)))                     "rsID"
+  else                                                      "mixed/other"
+}
+
+# Read only the ID column of the .bim
+bim_ids <- read.table(bim.fn, header = FALSE, sep = "",
+                      colClasses = c("NULL", "character", "NULL",
+                                     "NULL", "NULL", "NULL"),
+                      stringsAsFactors = FALSE)[[1]]
+
+model_shape <- id_shape(model_ids)
+data_shape  <- id_shape(bim_ids)
+n_id_hit    <- sum(model_ids %in% bim_ids)
+
+cat("--- Variant ID check ---\n")
+cat("Model ID format:  ", model_shape, "  e.g. ", head(model_ids, 1), "\n", sep = "")
+cat("Data  ID format:  ", data_shape,  "  e.g. ", head(bim_ids, 1),  "\n", sep = "")
+cat(sprintf("Model SNPs matched by ID: %d / %d (%.2f%%)\n",
+            n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
+cat("------------------------\n\n")
+
+if (n_id_hit == 0) {
+  stop("No model SNP IDs match the data.\n",
+       "  Model IDs look like '", model_shape, "' (", head(model_ids, 1), ")\n",
+       "  Data  IDs look like '", data_shape,  "' (", head(bim_ids, 1),  ")\n",
+       "  HIBAG matches on the ID string, so the two schemes must agree.\n",
+       "  Rename the data's variant IDs to match the model, e.g.\n",
+       "    plink2 --bfile <in> --set-all-var-ids '@:#' --rm-dup exclude-all \\\n",
+       "           --make-bed --out <out>")
+}
+
+if (model_shape != data_shape) {
+  cat("*** WARNING: model and data use different ID schemes (",
+      model_shape, " vs ", data_shape, ").\n", sep = "")
+  cat("    Some SNPs matched, but any spelled differently count as missing.\n\n")
+}
+
+# Duplicate IDs are dangerous rather than merely untidy: match() returns the
+# FIRST hit, so a model SNP would bind to an arbitrary variant at that ID.
+n_dup <- sum(duplicated(bim_ids))
+if (n_dup > 0) {
+  cat("*** WARNING:", n_dup, "duplicate variant IDs in", bim.fn, "\n")
+  cat("    Each model SNP will bind to whichever copy appears first.\n")
+  cat("    Deduplicate with: plink2 --rm-dup exclude-all\n\n")
+}
+
+rm(bim_ids)
 
 # Read FAM to get full sample list without loading genotypes.
 # colClasses = "character" is required: without it, numeric-looking sample IDs
@@ -200,6 +268,21 @@ for (i in seq_len(n_chunks)) {
     chunk_geno <- hlaGenoSubsetFlank(genotype, locus,
                                      region * 5000,
                                      assembly = assembly)
+    
+    # Authoritative overlap: this is the exact set kirPredict will match
+    # against, whatever hlaBED2Geno did to the IDs on the way in. Reported once
+    # so the number in the log is the one that actually governs prediction.
+    if (i == 1) {
+      n_geno_hit <- sum(model_ids %in% chunk_geno$snp.id)
+      cat(sprintf("Model SNPs present in genotype object: %d / %d (%.2f%%)\n",
+                  n_geno_hit, length(model_ids),
+                  100 * n_geno_hit / length(model_ids)))
+      if (!identical(id_shape(chunk_geno$snp.id), id_shape(model_ids))) {
+        cat("    NOTE: genotype IDs are '", id_shape(chunk_geno$snp.id),
+            "', model IDs are '", id_shape(model_ids), "'\n", sep = "")
+      }
+    }
+    
     pred <- kirPredict(model, chunk_geno, type = "response+prob")
     
     if (n_chunks > 1)
