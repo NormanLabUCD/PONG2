@@ -106,6 +106,42 @@ if (!is.null(model_path)) {
   cat("Loading built-in PONG2 model...\n\n")
   mobj <- modelObject(locus, filter, assembly)
 }
+
+# =============================================================================
+# NORMALISE VARIANT IDs TO chr:pos
+# HIBAG pairs model to genotypes with match(model$snp.id, geno$snp.id) — plain
+# string equality — so the two must be spelled identically. The shipped models
+# are not consistent: hg19 loci carry bare chr:pos (19:55314880) while hg38
+# loci carry alleles (19:54724545:G:A). Rather than depending on which, both
+# sides are reduced here to the one form that is reproducible from the site
+# alone: alleles dropped, any 'chr' prefix dropped.
+#
+# The rename is in place — same length, same order — because a HIBAG model's
+# classifiers index into snp.id. Entries must never be added or removed here.
+# =============================================================================
+normalize_ids <- function(x) {
+  x <- sub("^([^:]+:[0-9]+):.*$", "\\1", x)      # drop :ref:alt
+  sub("^chr", "", x, ignore.case = TRUE)          # drop chr prefix
+}
+
+.model_ids_raw  <- mobj$snp.id
+mobj$snp.id     <- normalize_ids(mobj$snp.id)
+.n_renamed      <- sum(mobj$snp.id != .model_ids_raw)
+.n_model_dup    <- sum(duplicated(mobj$snp.id))
+
+if (.n_renamed > 0) {
+  cat("Model SNP IDs normalised to chr:pos: ", .n_renamed, " of ",
+      length(mobj$snp.id), " rewritten (e.g. ",
+      .model_ids_raw[which(mobj$snp.id != .model_ids_raw)[1]], " -> ",
+      mobj$snp.id[which(mobj$snp.id != .model_ids_raw)[1]], ")\n", sep = "")
+}
+if (.n_model_dup > 0) {
+  cat("*** WARNING:", .n_model_dup, "model positions hold more than one allele pair.\n")
+  cat("    After dropping alleles their IDs collide; HIBAG keeps the first and\n")
+  cat("    treats the rest as missing. Expect that many SNPs to be unusable.\n\n")
+}
+rm(.model_ids_raw, .n_renamed, .n_model_dup)
+
 model <- hlaModelFromObj(mobj)
 
 # =============================================================================
@@ -153,11 +189,12 @@ id_shape <- function(x) {
   else                                                      "mixed/other"
 }
 
-# Read only the ID column of the .bim
-bim_ids <- read.table(bim.fn, header = FALSE, sep = "",
-                      colClasses = c("NULL", "character", "NULL",
-                                     "NULL", "NULL", "NULL"),
-                      stringsAsFactors = FALSE)[[1]]
+# Read only the ID column of the .bim, normalised the same way as the model's
+bim_ids <- normalize_ids(
+  read.table(bim.fn, header = FALSE, sep = "",
+             colClasses = c("NULL", "character", "NULL",
+                            "NULL", "NULL", "NULL"),
+             stringsAsFactors = FALSE)[[1]])
 
 model_shape <- id_shape(model_ids)
 data_shape  <- id_shape(bim_ids)
@@ -265,6 +302,10 @@ for (i in seq_len(n_chunks)) {
       import.chr = "19",
       assembly   = assembly
     )
+    
+    # Same normalisation as the model's IDs, in place (order preserved).
+    genotype$snp.id <- normalize_ids(genotype$snp.id)
+    
     chunk_geno <- hlaGenoSubsetFlank(genotype, locus,
                                      region * 5000,
                                      assembly = assembly)
