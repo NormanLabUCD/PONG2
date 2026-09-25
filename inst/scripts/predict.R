@@ -108,39 +108,57 @@ if (!is.null(model_path)) {
 }
 
 # =============================================================================
-# NORMALISE VARIANT IDs TO chr:pos
+# REBUILD VARIANT IDs FROM POSITION
 # HIBAG pairs model to genotypes with match(model$snp.id, geno$snp.id) — plain
-# string equality — so the two must be spelled identically. The shipped models
-# are not consistent: hg19 loci carry bare chr:pos (19:55314880) while hg38
-# loci carry alleles (19:54724545:G:A). Rather than depending on which, both
-# sides are reduced here to the one form that is reproducible from the site
-# alone: alleles dropped, any 'chr' prefix dropped.
+# string equality — so both sides must spell a site identically. Nothing in the
+# incoming ID strings can be relied on for that: the shipped models mix bare
+# chr:pos (19:55314880, hg19) with allele-bearing IDs (19:54724545:G:A, hg38)
+# and a handful of source identifiers that encode no coordinate at all
+# (HGSV_234687). User data arrives with rsIDs, chr-prefixed IDs, or whatever an
+# imputation server produced.
 #
-# The rename is in place — same length, same order — because a HIBAG model's
+# So IDs are not parsed, they are reconstructed as <chr>:<position> from each
+# side's own snp.position, which is authoritative and present on both. This
+# makes matching positional by construction and independent of naming.
+#
+# The rewrite is in place — same length, same order — because a HIBAG model's
 # classifiers index into snp.id. Entries must never be added or removed here.
 # =============================================================================
-normalize_ids <- function(x) {
-  x <- sub("^([^:]+:[0-9]+):.*$", "\\1", x)      # drop :ref:alt
-  sub("^chr", "", x, ignore.case = TRUE)          # drop chr prefix
+KIR_CHR <- "19"   # PONG2 is KIR-only; hlaBED2Geno below also imports chr 19
+
+rebuild_ids <- function(pos) paste0(KIR_CHR, ":", pos)
+
+id_shape <- function(x) {
+  x <- x[!is.na(x) & nzchar(x)]
+  if (!length(x)) return("empty")
+  s <- head(x, 1000)
+  if      (all(grepl("^[^:]+:[0-9]+$", s)))             "chr:pos"
+  else if (all(grepl("^[^:]+:[0-9]+:[^:]+:[^:]+$", s))) "chr:pos:ref:alt"
+  else if (all(grepl("^rs[0-9]+$", s)))                 "rsID"
+  else                                                  "mixed/other"
 }
 
-.model_ids_raw  <- mobj$snp.id
-mobj$snp.id     <- normalize_ids(mobj$snp.id)
-.n_renamed      <- sum(mobj$snp.id != .model_ids_raw)
-.n_model_dup    <- sum(duplicated(mobj$snp.id))
+if (is.null(mobj$snp.position))
+  stop("Model object has no snp.position; cannot rebuild variant IDs.")
+if (length(mobj$snp.position) != length(mobj$snp.id))
+  stop("Model snp.position (", length(mobj$snp.position), ") and snp.id (",
+       length(mobj$snp.id), ") are not aligned; refusing to rewrite IDs.")
 
-if (.n_renamed > 0) {
-  cat("Model SNP IDs normalised to chr:pos: ", .n_renamed, " of ",
-      length(mobj$snp.id), " rewritten (e.g. ",
-      .model_ids_raw[which(mobj$snp.id != .model_ids_raw)[1]], " -> ",
-      mobj$snp.id[which(mobj$snp.id != .model_ids_raw)[1]], ")\n", sep = "")
-}
+.shape_before <- id_shape(mobj$snp.id)
+.example_from <- mobj$snp.id[1]
+mobj$snp.id   <- rebuild_ids(mobj$snp.position)
+.n_model_dup  <- sum(duplicated(mobj$snp.id))
+
+cat("Model SNP IDs rebuilt from position: ", length(mobj$snp.id),
+    " SNPs (was '", .shape_before, "', e.g. ", .example_from, " -> ",
+    mobj$snp.id[1], ")\n", sep = "")
+
 if (.n_model_dup > 0) {
-  cat("*** WARNING:", .n_model_dup, "model positions hold more than one allele pair.\n")
-  cat("    After dropping alleles their IDs collide; HIBAG keeps the first and\n")
-  cat("    treats the rest as missing. Expect that many SNPs to be unusable.\n\n")
+  cat("*** WARNING:", .n_model_dup, "model SNPs share a position with another.\n")
+  cat("    Their rebuilt IDs collide; HIBAG keeps the first and treats the rest\n")
+  cat("    as missing. Expect that many SNPs to be unusable.\n\n")
 }
-rm(.model_ids_raw, .n_renamed, .n_model_dup)
+rm(.shape_before, .example_from, .n_model_dup)
 
 model <- hlaModelFromObj(mobj)
 
@@ -166,73 +184,51 @@ bim.fn <- paste0(input, ".bim")
 region <- 5000
 
 # =============================================================================
-# PRE-FLIGHT: VARIANT ID NAMING
-# HIBAG pairs model to genotypes with match(model$snp.id, geno$snp.id) — plain
-# string equality. Both sides must therefore use the same ID scheme, which for
-# PONG2 models is chr:pos (e.g. 19:55314880). Allele-bearing IDs such as
-# 19:55314880:A:G are NOT interchangeable: REF/ALT come from each dataset's own
-# A1/A2 assignment, so the same site can be spelled either way and every such
-# SNP is then counted as missing.
-#
-# Checking here catches it before any prediction work is done, and covers the
-# case where predict.R is called directly or with a custom --model.
+# PRE-FLIGHT: MODEL / DATA OVERLAP
+# The model's IDs were rebuilt from position above, and the genotype's are
+# rebuilt the same way inside the chunk loop, so overlap is checked here on the
+# same basis: positions on chromosome 19. Doing it before the loop means a
+# hopeless run fails immediately instead of once per chunk, and it covers direct
+# calls to predict.R and custom --model files.
 # =============================================================================
-model_ids <- if (!is.null(mobj$snp.id)) mobj$snp.id else model$snp.id
+model_ids <- mobj$snp.id
 
-id_shape <- function(x) {
-  x <- x[!is.na(x) & nzchar(x)]
-  if (!length(x)) return("empty")
-  s <- head(x, 1000)
-  if      (all(grepl("^[^:]+:[0-9]+$", s)))                 "chr:pos"
-  else if (all(grepl("^[^:]+:[0-9]+:[^:]+:[^:]+$", s)))     "chr:pos:ref:alt"
-  else if (all(grepl("^rs[0-9]+$", s)))                     "rsID"
-  else                                                      "mixed/other"
-}
+# Read only the position column of the .bim and build IDs the same way
+bim_pos <- read.table(bim.fn, header = FALSE, sep = "",
+                      colClasses = c("NULL", "NULL", "NULL",
+                                     "integer", "NULL", "NULL"),
+                      stringsAsFactors = FALSE)[[1]]
+bim_ids <- rebuild_ids(bim_pos)
 
-# Read only the ID column of the .bim, normalised the same way as the model's
-bim_ids <- normalize_ids(
-  read.table(bim.fn, header = FALSE, sep = "",
-             colClasses = c("NULL", "character", "NULL",
-                            "NULL", "NULL", "NULL"),
-             stringsAsFactors = FALSE)[[1]])
+n_id_hit <- sum(model_ids %in% bim_ids)
 
-model_shape <- id_shape(model_ids)
-data_shape  <- id_shape(bim_ids)
-n_id_hit    <- sum(model_ids %in% bim_ids)
-
-cat("--- Variant ID check ---\n")
-cat("Model ID format:  ", model_shape, "  e.g. ", head(model_ids, 1), "\n", sep = "")
-cat("Data  ID format:  ", data_shape,  "  e.g. ", head(bim_ids, 1),  "\n", sep = "")
-cat(sprintf("Model SNPs matched by ID: %d / %d (%.2f%%)\n",
+cat("--- Model / data overlap ---\n")
+cat("Model SNPs:      ", length(model_ids), "  e.g. ", head(model_ids, 1), "\n", sep = "")
+cat("Data variants:   ", length(bim_ids),   "  e.g. ", head(bim_ids, 1),   "\n", sep = "")
+cat(sprintf("Model SNPs present: %d / %d (%.2f%%)\n",
             n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
-cat("------------------------\n\n")
+cat("----------------------------\n\n")
 
 if (n_id_hit == 0) {
-  stop("No model SNP IDs match the data.\n",
-       "  Model IDs look like '", model_shape, "' (", head(model_ids, 1), ")\n",
-       "  Data  IDs look like '", data_shape,  "' (", head(bim_ids, 1),  ")\n",
-       "  HIBAG matches on the ID string, so the two schemes must agree.\n",
-       "  Rename the data's variant IDs to match the model, e.g.\n",
-       "    plink2 --bfile <in> --set-all-var-ids '@:#' --rm-dup exclude-all \\\n",
-       "           --make-bed --out <out>")
+  stop("No model SNP positions are present in the data.\n",
+       "  Model positions span ", min(mobj$snp.position), "-",
+       max(mobj$snp.position), "\n",
+       "  Data  positions span ", min(bim_pos), "-", max(bim_pos), "\n",
+       "  Non-overlapping ranges like these usually mean the data and the model\n",
+       "  are on different genome builds. Check --assembly (", assembly, ").")
 }
 
-if (model_shape != data_shape) {
-  cat("*** WARNING: model and data use different ID schemes (",
-      model_shape, " vs ", data_shape, ").\n", sep = "")
-  cat("    Some SNPs matched, but any spelled differently count as missing.\n\n")
-}
-
-# Duplicate IDs are dangerous rather than merely untidy: match() returns the
-# FIRST hit, so a model SNP would bind to an arbitrary variant at that ID.
+# Duplicate positions are dangerous rather than merely untidy: match() returns
+# the FIRST hit, so a model SNP would bind to an arbitrary variant there.
 n_dup <- sum(duplicated(bim_ids))
 if (n_dup > 0) {
-  cat("*** WARNING:", n_dup, "duplicate variant IDs in", bim.fn, "\n")
-  cat("    Each model SNP will bind to whichever copy appears first.\n")
-  cat("    Deduplicate with: plink2 --rm-dup exclude-all\n\n")
+  cat("*** WARNING:", n_dup, "variants share a position with another in", bim.fn, "\n")
+  cat("    Each model SNP binds to whichever copy appears first, whose alleles\n")
+  cat("    may differ from the model's.\n")
+  cat("    Deduplicate with: plink2 --set-all-var-ids '@:#' --rm-dup exclude-all\n\n")
 }
 
-rm(bim_ids)
+rm(bim_ids, bim_pos)
 
 # Read FAM to get full sample list without loading genotypes.
 # colClasses = "character" is required: without it, numeric-looking sample IDs
@@ -303,8 +299,12 @@ for (i in seq_len(n_chunks)) {
       assembly   = assembly
     )
     
-    # Same normalisation as the model's IDs, in place (order preserved).
-    genotype$snp.id <- normalize_ids(genotype$snp.id)
+    # Rebuild IDs from position, exactly as the model's were, so match() pairs
+    # the two on coordinate rather than on whatever the input called things.
+    # In place: same length, same order.
+    if (length(genotype$snp.position) != length(genotype$snp.id))
+      stop("genotype snp.position and snp.id are not aligned for chunk ", i)
+    genotype$snp.id <- rebuild_ids(genotype$snp.position)
     
     chunk_geno <- hlaGenoSubsetFlank(genotype, locus,
                                      region * 5000,
@@ -318,9 +318,9 @@ for (i in seq_len(n_chunks)) {
       cat(sprintf("Model SNPs present in genotype object: %d / %d (%.2f%%)\n",
                   n_geno_hit, length(model_ids),
                   100 * n_geno_hit / length(model_ids)))
-      if (!identical(id_shape(chunk_geno$snp.id), id_shape(model_ids))) {
-        cat("    NOTE: genotype IDs are '", id_shape(chunk_geno$snp.id),
-            "', model IDs are '", id_shape(model_ids), "'\n", sep = "")
+      if (n_geno_hit < length(model_ids)) {
+        cat("    ", length(model_ids) - n_geno_hit,
+            " model positions are not in the data and count as missing.\n", sep = "")
       }
     }
     
