@@ -31,19 +31,34 @@ stopifnot(
 )
 
 # =============================================================================
+# VALIDATE INPUT FILES
+# Fail here with a clear message rather than deep inside read.table or plink2.
+# =============================================================================
+for (.ext in c(".bed", ".bim", ".fam")) {
+  .f <- paste0(input, .ext)
+  if (!file.exists(.f)) stop("PLINK input file not found: ", .f)
+}
+rm(.ext, .f)
+
+# =============================================================================
 # MODEL LOADER — built-in
 # =============================================================================
 modelObject <- function(locus, filter = 0.005, assembly = c("hg38", "hg19")) {
   assembly <- match.arg(assembly)
   locus    <- toupper(locus)
-  valid_filters <- c(0.01, 0.005)
+  # Must accept the same set as snpmissingness.R, otherwise a run passes the
+  # SNP-overlap check and then dies here on an unsupported --filter.
+  valid_filters <- c(0, 0.01, 0.005)
   if (!filter %in% valid_filters) {
     stop("filter must be one of: ", paste(valid_filters, collapse = ", "),
          " — received: ", filter)
   }
   rds_path   <- .get_model_path()
   getObject  <- readRDS(rds_path)
-  filter_key <- ifelse(filter == 0.01, "allele_fileter_001", "allele_fileter_0005")
+  filter_key <- switch(as.character(filter),
+                       "0"     = "allele_fileter_00",
+                       "0.01"  = "allele_fileter_001",
+                       "0.005" = "allele_fileter_0005")
   mobj       <- getObject[[assembly]][[filter_key]][[locus]]
   if (is.null(mobj)) {
     stop("No model found for locus: ", locus,
@@ -112,10 +127,14 @@ if (requireNamespace("RcppParallel", quietly = TRUE)) {
 bed.fn <- paste0(input, ".bed")
 fam.fn <- paste0(input, ".fam")
 bim.fn <- paste0(input, ".bim")
-region <- 5000
+region <- 5
 
-# Read FAM to get full sample list without loading genotypes
-fam_data    <- read.table(fam.fn, header = FALSE)
+# Read FAM to get full sample list without loading genotypes.
+# colClasses = "character" is required: without it, numeric-looking sample IDs
+# are read as numbers, so "007" becomes 7 and the --keep file no longer matches
+# the .fam. plink2 then keeps 0 samples and the chunk fails.
+fam_data    <- read.table(fam.fn, header = FALSE,
+                          colClasses = "character", stringsAsFactors = FALSE)
 all_samples <- fam_data[[2]]
 n_samples   <- length(all_samples)
 n_chunks    <- ceiling(n_samples / CHUNK_SIZE)
@@ -130,12 +149,22 @@ if (n_chunks == 1) {
              " chunks of up to ", CHUNK_SIZE, " samples\n\n"))
 }
 
+# Output directory is created up front so a failed-chunk report can be written
+# even if the run ends early. dir.create is a no-op when it already exists;
+# showWarnings = FALSE keeps concurrent loci from each logging a spurious
+# "already exists" warning as they race to create the shared KIR/ directory.
+out_dir <- file.path(output, "KIR")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+if (!dir.exists(out_dir)) stop("Could not create output directory: ", out_dir)
+
 chunk_results <- vector("list", n_chunks)
+chunk_sample_ids <- vector("list", n_chunks)   # for the failed-chunk report
 
 for (i in seq_len(n_chunks)) {
   idx_start <- (i - 1) * CHUNK_SIZE + 1
   idx_end   <- min(i * CHUNK_SIZE, n_samples)
   chunk_ids <- all_samples[idx_start:idx_end]
+  chunk_sample_ids[[i]] <- chunk_ids
   
   if (n_chunks > 1) {
     cat(sprintf("[Chunk %d/%d] Samples %d-%d (%d samples)...\n",
@@ -192,8 +221,22 @@ for (i in seq_len(n_chunks)) {
 # =============================================================================
 failed <- which(sapply(chunk_results, is.null))
 if (length(failed) > 0) {
+  # Record which samples were lost. A warning alone is easy to miss when many
+  # loci are logging at once, and a silently short results file is worse than
+  # a loud one.
+  failed_ids   <- unlist(chunk_sample_ids[failed], use.names = FALSE)
+  failed_file  <- file.path(out_dir, paste0(locus, "_failed_samples.txt"))
+  writeLines(as.character(failed_ids), failed_file)
+  
+  cat("\n*** WARNING:", length(failed), "of", n_chunks, "chunks failed ***\n")
+  cat("    Failed chunks:  ", paste(failed, collapse = ", "), "\n")
+  cat("    Samples lost:   ", length(failed_ids), "of", n_samples, "\n")
+  cat("    Sample IDs in:  ", failed_file, "\n")
+  cat("    Results below are INCOMPLETE.\n\n")
+  
   warning("Failed chunks: ", paste(failed, collapse = ", "),
-          " — excluded from final results")
+          " — excluded from final results (", length(failed_ids),
+          " samples; see ", failed_file, ")")
   chunk_results <- chunk_results[!sapply(chunk_results, is.null)]
 }
 if (length(chunk_results) == 0) {
@@ -212,12 +255,18 @@ if (n_chunks == 1) {
              " / ", n_samples, " samples\n"))
 }
 
+# Completeness check: flag a short result even when no chunk reported an error,
+# so samples dropped inside kirPredict do not pass unnoticed.
+n_out <- nrow(pred.guess$value)
+if (length(failed) == 0 && !is.null(n_out) && n_out != n_samples) {
+  cat("\n*** NOTE: results contain", n_out, "of", n_samples,
+      "samples although no chunk reported an error.\n")
+  cat("    Samples may have been dropped during prediction.\n\n")
+}
+
 # =============================================================================
 # SAVE RESULTS
 # =============================================================================
-out_dir <- file.path(output, "KIR")
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-
 save(pred.guess,
      file = file.path(out_dir, paste0(locus, ".RData")))
 

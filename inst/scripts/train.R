@@ -130,7 +130,9 @@ frequency_filter <- function(kir_data, locus, filtered_freq){
 }
 
 
-filterSNP <- paste0(out, "/kir")
+# Locus-specific prefix, so concurrent per-locus runs sharing one --output
+# directory cannot overwrite each other's MAC-filtered PLINK set.
+filterSNP <- paste0(out, "/", locus)
 system(paste("plink2 --bfile", chr19," --mac", mac, "--silent --make-bed --out", filterSNP))
 bed.fn <- paste0(filterSNP, '.bed')
 fam.fn <- paste0(filterSNP, '.fam')

@@ -55,6 +55,7 @@ FILL_MISSING="false"
 MODEL_PATH="Null"
 THRESHOLD=0.5
 MODEL_DIR=""
+TMP_DIR=""          # Per-locus scratch dir; set once --locus is known
 
 # =============================================================================
 # KIR REGION POSITIONS
@@ -103,11 +104,25 @@ check_plink2() {
 }
 
 # =============================================================================
+# SHARED: SCRATCH DIRECTORY
+# =============================================================================
+# Every run gets its own subdirectory under <output>/tmp, named after the
+# locus. This is what makes concurrent per-locus runs safe: no two runs can
+# read, overwrite or delete each other's intermediate files, even when they
+# share one --output directory and the same input file name.
+setup_tmp_dir() {
+  [[ -n "$OUTPUT_DIR" ]] || die "--output required"
+  [[ -n "$LOCUS"      ]] || die "--locus required"
+  TMP_DIR="$OUTPUT_DIR/tmp/$LOCUS"
+  mkdir -p "$TMP_DIR"
+}
+
+# =============================================================================
 # SHARED: PLINK PREPROCESSING
 # =============================================================================
 preprocess_plink() {
-  local bfile="$1" outdir="$2" kir_file="$3"
-  local tmp="$outdir/tmp"
+  local bfile="$1" tmpdir="$2" kir_file="$3"
+  local tmp="$tmpdir"
   local min_samples="${PONG2_MIN_SAMPLES:-10}"   # override via env if needed
 
   log_step "Preprocessing PLINK files"
@@ -118,6 +133,7 @@ preprocess_plink() {
     [[ -f "${bfile}.${ext}" ]] || die "PLINK file not found: ${bfile}.${ext}"
   done
   [[ -f "$kir_file" ]] || die "KIR file not found: $kir_file"
+  [[ -n "$tmp"      ]] || die "Internal error: preprocess_plink called without a temp directory"
   mkdir -p "$tmp"
 
   # ── Step 1: Normalise the KIR file ────────────────────────────────────────
@@ -255,10 +271,11 @@ train_model() {
   "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "plink2"
 
   # ── Setup directories ────────────────────────────────────────────────────
-  mkdir -p "$OUTPUT_DIR/tmp"
+  # Per-locus scratch dir, so parallel loci cannot clash.
+  setup_tmp_dir
 
   # ── Preprocess PLINK ─────────────────────────────────────────────────────
-  preprocess_plink "$BIM_FILE" "$OUTPUT_DIR" "$KIR_FILE"
+  preprocess_plink "$BIM_FILE" "$TMP_DIR" "$KIR_FILE"
 
   # ── Print training summary ───────────────────────────────────────────────
   cat <<SUMMARY
@@ -272,13 +289,14 @@ $(echo -e "${BOLD}--- Training Summary ---${NC}")
   KIR MAF:       $KIRMAF
   MAC:           $MAC
   Locus Region:  $LOCUS_REGION
+  Scratch dir:   $TMP_DIR
 ------------------------
 SUMMARY
 
   # ── Run R training script ─────────────────────────────────────────────────
   log_step "Training KIR model: $LOCUS"
   "$RSCRIPT" --vanilla "$train_script" \
-    "$OUTPUT_DIR/tmp/chr19" \
+    "$TMP_DIR/chr19" \
     "$KIR_FILE" \
     "$LOCUS" \
     "$ASSEMBLY" \
@@ -291,8 +309,10 @@ SUMMARY
     "$LOCUS_REGION"
 
   # ── Cleanup ───────────────────────────────────────────────────────────────
+  # Remove only this locus's scratch dir. <output>/tmp is left in place so a
+  # concurrent locus still holding files there is unaffected.
   log_step "Cleaning up temporary files..."
-  rm -rf "$OUTPUT_DIR/tmp"
+  rm -rf "$TMP_DIR"
 
   log_info "Training complete. Model saved to: $OUTPUT_DIR/${LOCUS}_model.RData"
 }
@@ -365,7 +385,8 @@ imputation() {
   [[ -f "$missingness_script" ]] || die "snpmissingness.R not found in PONG2 package"
 
   # ── Setup ────────────────────────────────────────────────────────────────
-  mkdir -p "$OUTPUT_DIR/tmp"
+  # Per-locus scratch dir, so parallel loci cannot clash.
+  setup_tmp_dir
   read -r start end chr <<< "$(pos "$ASSEMBLY")"
 
   # ── Extract KIR region ───────────────────────────────────────────────────
@@ -378,10 +399,25 @@ imputation() {
     local input_vcf="$VCF_FILE"
     if [[ "$VCF_FILE" != *.gz ]]; then
       log_info "Compressing VCF with bgzip..."
-      bgzip -c "$VCF_FILE" > "$OUTPUT_DIR/tmp/$filename.vcf.gz"
-      input_vcf="$OUTPUT_DIR/tmp/$filename.vcf.gz"
+      bgzip -c "$VCF_FILE" > "$TMP_DIR/$filename.vcf.gz"
+      input_vcf="$TMP_DIR/$filename.vcf.gz"
     fi
-    [[ -f "${input_vcf}.tbi" ]] || tabix -f "$input_vcf"
+
+    # Index the VCF if it has no .tbi yet. When the VCF lives outside our
+    # scratch dir it may be shared by several concurrent loci, so we index a
+    # symlink inside $TMP_DIR instead of writing a .tbi next to the original —
+    # two runs indexing the same file at once could otherwise corrupt it.
+    if [[ ! -f "${input_vcf}.tbi" ]]; then
+      if [[ "$input_vcf" == "$TMP_DIR"/* ]]; then
+        tabix -f "$input_vcf"
+      else
+        local vcf_abs
+        vcf_abs="$(cd "$(dirname "$input_vcf")" && pwd)/$(basename "$input_vcf")"
+        ln -sf "$vcf_abs" "$TMP_DIR/$filename.src.vcf.gz"
+        input_vcf="$TMP_DIR/$filename.src.vcf.gz"
+        tabix -f "$input_vcf"
+      fi
+    fi
 
     local vcf_chr
     #vcf_chr=$(set +o pipefail; zcat "$input_vcf" | grep -v "^#" | head -1 | awk '{print $1}')
@@ -390,16 +426,16 @@ imputation() {
       log_warn "Fixing missing chr prefix for hg38..."
       zcat "$input_vcf" | \
         awk 'BEGIN{OFS="\t"} /^#/{print; next} {$1="chr"$1; print}' | \
-        bgzip > "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
-      tabix -f "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
-      input_vcf="$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+        bgzip > "$TMP_DIR/$filename.fixed.vcf.gz"
+      tabix -f "$TMP_DIR/$filename.fixed.vcf.gz"
+      input_vcf="$TMP_DIR/$filename.fixed.vcf.gz"
     elif [[ "$ASSEMBLY" == "hg19" && "$vcf_chr" == chr* ]]; then
       log_warn "Removing chr prefix for hg19..."
       zcat "$input_vcf" | \
         awk 'BEGIN{OFS="\t"} /^#/{print; next} {sub(/^chr/,"",$1); print}' | \
-        bgzip > "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
-      tabix -f "$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
-      input_vcf="$OUTPUT_DIR/tmp/$filename.fixed.vcf.gz"
+        bgzip > "$TMP_DIR/$filename.fixed.vcf.gz"
+      tabix -f "$TMP_DIR/$filename.fixed.vcf.gz"
+      input_vcf="$TMP_DIR/$filename.fixed.vcf.gz"
     fi
 
     log_info "Converting VCF to PLINK for SNP matching check..."
@@ -409,7 +445,7 @@ imputation() {
       --from-bp "$start" \
       --to-bp "$end" \
       --make-bed \
-      --out "$OUTPUT_DIR/tmp/$filename" \
+      --out "$TMP_DIR/$filename" \
       --silent
 
   else
@@ -422,11 +458,11 @@ imputation() {
       --from-bp "$start" \
       --to-bp "$end" \
       --make-bed \
-      --out "$OUTPUT_DIR/tmp/$filename" \
+      --out "$TMP_DIR/$filename" \
       --silent
 
     if [[ "$ASSEMBLY" == "hg38" ]]; then
-      sed -i 's/^/chr/' "$OUTPUT_DIR/tmp/$filename.bim"
+      sed -i 's/^/chr/' "$TMP_DIR/$filename.bim"
     fi
   fi
 
@@ -435,7 +471,7 @@ imputation() {
 
   local matching
   matching=$("$RSCRIPT" --vanilla "$missingness_script" \
-    "$OUTPUT_DIR/tmp/$filename" \
+    "$TMP_DIR/$filename" \
     "$OUTPUT_DIR" \
     "$ASSEMBLY" \
     "$LOCUS" \
@@ -456,11 +492,11 @@ imputation() {
       log_step "Pre-imputing missing SNPs with minimac4..."
       "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "minimac4"
       _run_minimac4_from_vcf "$input_vcf" "$filename"
-      kir_imputation "$OUTPUT_DIR/tmp/imputed.$filename"
+      kir_imputation "$TMP_DIR/imputed.$filename"
 
     elif [[ "$FORCE" == "true" ]]; then
       log_warn "Proceeding despite low match rate (--force enabled)"
-      kir_imputation "$OUTPUT_DIR/tmp/$filename"
+      kir_imputation "$TMP_DIR/$filename"
 
     else
       log_error "Match rate too low: ${matching_pct}%"
@@ -472,7 +508,7 @@ imputation() {
 
   else
     log_info "Match rate sufficient: ${matching_pct}% — proceeding with imputation"
-    kir_imputation "$OUTPUT_DIR/tmp/$filename"
+    kir_imputation "$TMP_DIR/$filename"
   fi
 }
 
@@ -498,26 +534,26 @@ _minimac4_impute() {
   PONG2_DATA_DIR=$(Rscript -e 'cat(tools::R_user_dir("PONG2", which = "data"))')
   ref_dir="$PONG2_DATA_DIR/reference"
 
-  if [[ ! -f "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" ]]; then
+  if [[ ! -f "$TMP_DIR/imputed.$filename.vcf.gz" ]]; then
     # Check reference panel exists before attempting imputation
     if ! ls "$ref_dir/"*.msav 1>/dev/null 2>&1; then
       log_error "No reference panel (.msav) found in $ref_dir"
       ##log_error "Run: pong2 setup-ref --assembly $ASSEMBLY to download it"
       return 1
     fi
-  
+
     log_info "Running minimac4 imputation..."
     run_minimac4_416 \
       "$ref_dir/"*.msav \
       "$input_vcf" \
       --region "${chr}:${start}-${end}" \
-      -o "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
+      -o "$TMP_DIR/tmp.imputed.$filename.vcf.gz" \
       -c 1000000 \
       -t "$THREADS" \
-      -e "$OUTPUT_DIR/tmp/empirical.imputed_$filename.vcf.gz" \
+      -e "$TMP_DIR/empirical.imputed_$filename.vcf.gz" \
       --format DS
-    mv "$OUTPUT_DIR/tmp/tmp.imputed.$filename.vcf.gz" \
-       "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz"
+    mv "$TMP_DIR/tmp.imputed.$filename.vcf.gz" \
+       "$TMP_DIR/imputed.$filename.vcf.gz"
     log_info "Minimac4 imputation complete"
   else
     log_info "Imputed VCF already exists — skipping minimac4"
@@ -532,16 +568,16 @@ _imputed_vcf_to_plink() {
 
   log_info "Converting imputed VCF to PLINK format..."
   plink2 \
-    --vcf "$OUTPUT_DIR/tmp/imputed.$filename.vcf.gz" dosage=DS \
+    --vcf "$TMP_DIR/imputed.$filename.vcf.gz" dosage=DS \
     --import-dosage-certainty 0.5 \
     --make-pgen \
-    --out "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --out "$TMP_DIR/imputed.$filename" \
     --silent
 
   plink2 \
-    --pfile "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --pfile "$TMP_DIR/imputed.$filename" \
     --make-bed \
-    --out "$OUTPUT_DIR/tmp/imputed.$filename" \
+    --out "$TMP_DIR/imputed.$filename" \
     --silent
 
   log_info "PLINK conversion complete"
@@ -592,8 +628,13 @@ kir_imputation() {
     --make-bed \
     --out "${plink_file}.nodup"
 
-  # Copy final plink files to output
-  cp "${plink_file}.nodup."* "$OUTPUT_DIR/"
+  # Copy final plink files to output, prefixed with the locus so that
+  # concurrent runs sharing one --output directory write distinct files.
+  local f
+  for f in "${plink_file}.nodup."*; do
+    [[ -e "$f" ]] || continue
+    cp "$f" "$OUTPUT_DIR/${LOCUS}_$(basename "$f")"
+  done
 
   # Run R prediction — pass MODEL_PATH as 7th argument
   "$RSCRIPT" --vanilla "$predict_script" \
@@ -607,7 +648,7 @@ kir_imputation() {
 
   # Cleanup
   log_step "Cleaning up temporary files..."
-  #rm -rf "$OUTPUT_DIR/tmp/"
+  #rm -rf "$TMP_DIR"
 
   log_info "Imputation complete. Results saved to: $OUTPUT_DIR"
 }
