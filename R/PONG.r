@@ -2306,8 +2306,8 @@ predict.hlaAttrBagClass <- function (object, snp, cl = FALSE, type = c("response
 kirPredict <- function (object, snp, cl = FALSE, type = c("response+dosage",
     "response", "prob", "response+prob"), vote = c("prob", "majority"),
     allele.check = TRUE, match.type = c("Position", "Pos+Allele",
-        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = TRUE,
-    verbose.match = TRUE)
+        "RefSNP+Position", "RefSNP"), same.strand = FALSE, verbose = FALSE,
+    verbose.match = FALSE)
 {
     stopifnot(inherits(object, "hlaAttrBagClass"))
     stopifnot(is.logical(cl) | is.numeric(cl) | inherits(cl,
