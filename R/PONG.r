@@ -635,7 +635,7 @@ hlaGeno2PED <- function(geno, out.fn)
 
 hlaBED2Geno <- function(bed.fn, fam.fn, bim.fn, rm.invalid.allele=FALSE,
 	import.chr="KIR", assembly=c("auto", "hg19", "hg38", "unknown"), ##KIRedit
-	verbose=TRUE)
+	verbose=FALSE)
 {
 	# check
 	stopifnot(is.character(bed.fn) & (length(bed.fn)==1))
