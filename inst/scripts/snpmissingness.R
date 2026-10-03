@@ -44,10 +44,10 @@ if (!is.null(model_path)) {
   if (!file.exists(model_path)) {
     stop("Custom model file not found: ", model_path)
   }
-
+  
   local_env <- new.env()
   load(model_path, envir = local_env)
-
+  
   if (!"mobj" %in% ls(local_env)) {
     stop(
       "Custom model file must contain an object named 'mobj'.\n",
@@ -56,36 +56,37 @@ if (!is.null(model_path)) {
       "  save(mobj, file = '", model_path, "')"
     )
   }
-
+  
   mobj <- local_env$mobj
-
+  
 } else {
   # ── Built-in pre-trained model ────────────────────────────────────────────
-
+  
   # Load model object once
-  rds_path  <- .get_model_path()
-  getObject <- readRDS(rds_path)
-
+  rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
+  object    <- readRDS(rds_path)
+  getObject <- get(object$models)
+  
   # Validate filter
   valid_filters <- c(0, 0.01, 0.005)
   if (!filter %in% valid_filters) {
     stop("filter must be one of: ", paste(valid_filters, collapse = ", "),
          " — received: ", filter)
   }
-
+  
   filter_key <- switch(as.character(filter),
                        "0"     = "allele_fileter_00",
                        "0.01"  = "allele_fileter_001",
                        "0.005" = "allele_fileter_0005"
   )
-
+  
   # Validate locus — derived directly from model object
   available_filter_keys <- names(getObject[[assembly]])
-
+  
   supported_loci <- unique(unlist(
     lapply(available_filter_keys, function(fk) names(getObject[[assembly]][[fk]]))
   ))
-
+  
   if (!locus %in% supported_loci) {
     stop(
       "Locus '", locus, "' is not available for assembly '", assembly, "'.\n",
@@ -93,7 +94,7 @@ if (!is.null(model_path)) {
       paste(sort(supported_loci), collapse = ", ")
     )
   }
-
+  
   # Check locus exists for the requested filter level specifically
   if (is.null(getObject[[assembly]][[filter_key]][[locus]])) {
     available_for_locus <- available_filter_keys[
@@ -108,7 +109,7 @@ if (!is.null(model_path)) {
       paste(available_for_locus, collapse = ", ")
     )
   }
-
+  
   mobj <- getObject[[assembly]][[filter_key]][[locus]]
 }
 
@@ -117,23 +118,38 @@ if (!is.null(model_path)) {
 # =============================================================================
 model <- hlaModelFromObj(mobj)
 
-min_pos <- min(model$snp.position)
-max_pos <- max(model$snp.position)
+# KIR is chromosome 19 only. CHR must be part of the filter: a bare BP range
+# matches the same coordinate on every other chromosome, which inflates the
+# overlap — up to 100% — whenever the input is not already chr19-only.
+KIR_CHR <- "19"
 
-# Read bim file
 bim <- read.table(
   paste0(input, ".bim"),
   header           = FALSE,
   sep              = "",
   col.names        = c("CHR", "SNP", "CM", "BP", "A1", "A2"),
+  colClasses       = c("character", "character", "numeric",
+                       "integer", "character", "character"),
   stringsAsFactors = FALSE
 )
 
-# Subset bim to model region
-subset_bim <- subset(bim, BP >= min_pos & BP <= max_pos)
+# Accept "19" or "chr19" in the .bim without silently matching nothing
+bim$CHR <- sub("^chr", "", bim$CHR)
+bim <- bim[bim$CHR == KIR_CHR, , drop = FALSE]
 
-# Compute overlap
-overlap    <- unique(intersect(model$snp.position, subset_bim$BP))
-match_rate <- length(overlap) / length(model$snp.position)
+if (nrow(bim) == 0) {
+  stop("no chromosome ", KIR_CHR, " variants in ", input, ".bim")
+}
 
-cat(format(match_rate, nsmall = 2), "\n")
+# Count model SNPs, not distinct positions, and divide by model SNPs — the
+# same ratio predict.R reports, so the two can no longer disagree. Counting
+# distinct positions in the numerator against all model SNPs in the
+# denominator mixes two different quantities.
+mk_id      <- function(p) paste0(KIR_CHR, ":", as.integer(p))
+model_ids  <- mk_id(model$snp.position)
+data_ids   <- mk_id(bim$BP)
+match_rate <- sum(model_ids %in% data_ids) / length(model_ids)
+
+# Full precision: the caller multiplies by 100 and formats. format(nsmall = 2)
+# sets only a minimum number of decimals, so it was never the rounding step.
+cat(sprintf("%.6f", match_rate), "\n")
