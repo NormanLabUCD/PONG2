@@ -164,9 +164,25 @@ if (nrow(bim) == 0) {
 # distinct positions in the numerator against all model SNPs in the
 # denominator mixes two different quantities.
 mk_id      <- function(p) paste0(KIR_CHR, ":", as.integer(p))
-model_ids  <- mk_id(model$snp.position)
+
+# predict.R takes its model SNPs from mobj$snp.position. hlaModelFromObj() is
+# not guaranteed to carry the same set, and a different denominator here is
+# indistinguishable from a different match rate. Use mobj directly, and say so
+# if the two disagree.
+model_pos <- mobj$snp.position
+if (length(model_pos) != length(model$snp.position)) {
+  message("[missingness] NOTE: mobj has ", length(model_pos),
+          " SNPs but hlaModelFromObj() reports ", length(model$snp.position),
+          "; using mobj to match predict.R")
+}
+
+model_ids  <- mk_id(model_pos)
 data_ids   <- mk_id(bim$BP)
-match_rate <- sum(model_ids %in% data_ids) / length(model_ids)
+n_hit      <- sum(model_ids %in% data_ids)
+match_rate <- n_hit / length(model_ids)
+
+# stderr, never stdout: the caller captures this script's stdout as the rate,
+# so anything printed there corrupts the number it parses.
 
 # Full precision: the caller multiplies by 100 and formats. format(nsmall = 2)
 # sets only a minimum number of decimals, so it was never the rounding step.

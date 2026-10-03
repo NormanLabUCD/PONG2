@@ -222,9 +222,6 @@ preprocess_plink() {
   local n_before
   n_before=$(wc -l < "$tmp/temp.bim")
 
-  # No --snps-only here. The KIR models carry indels as predictors (134 of
-  # KIR3DL1's 1986 snp.allele entries are multi-character), so filtering to
-  # SNPs would train over a different variant set than the models actually use.
   plink2 \
     --bfile "$tmp/temp" \
     --set-all-var-ids '@:#' \
@@ -248,102 +245,6 @@ preprocess_plink() {
   fi
 
   (( n_variants > 0 )) || die "No variants remaining after preprocessing."
-}
-
-# =============================================================================
-# SHARED: STANDARDISE A PLINK SET FOR PREDICTION
-# =============================================================================
-# Produces <in_prefix>.nodup.{bed,bim,fam} with IDs as chr:pos and one variant
-# per position. Both the SNP-overlap check and predict.R read this output, so
-# the rate reported before prediction is the rate that governs prediction.
-# The cleaning used to live inside kir_imputation, which runs after the check —
-# so the check measured the raw file while predict.R measured the cleaned one,
-# and the two rates disagreed with nothing in the log to explain it.
-#
-# HIBAG pairs model to data with
-#     snp.sel <- match(model$snp.id, geno$snp.id)
-# i.e. plain string equality, so the ID must be reproducible from the site
-# alone. chr:pos:ref:alt is not: loading a .bed, plink2 has no REF/ALT and
-# treats A2 as a provisional REF, so the same site becomes 19:55250000:A:G in
-# one dataset and 19:55250000:G:A in another.
-standardise_plink() {
-  local in_prefix="$1"
-  local out_prefix="${in_prefix}.nodup"
-
-  # No --snps-only filter. The models carry indels as predictors — 134 of
-  # KIR3DL1's 1986 snp.allele entries are multi-character — so removing
-  # non-SNP records deletes variants the model actually uses (measured:
-  # 95.62% -> 90.79% coverage on 1kGP chr19).
-  #
-  # Three passes:
-  #   1. tag every record with a per-record unique ID, so --extract can name one
-  #   2. ask the model which record to keep at each duplicated position
-  #   3. extract those and rewrite IDs to chr:pos, which is now unique
-  #
-  # Step 2 is what --rm-dup exclude-all cannot do. At a multi-allelic site it
-  # drops every record, including the one the model needs: KIR3DL1 position
-  # 54805984 has model allele T/C while the data carries A/C and T/C, and
-  # exclude-all deletes both. The model names the right record, so keep it.
-  local select_script
-  select_script="$("$RSCRIPT" -e "cat(system.file('scripts', 'select_model_variants.R', package='PONG2'))")"
-  [[ -f "$select_script" ]] || die "select_model_variants.R not found in PONG2 package"
-
-  local n_before
-  n_before=$(wc -l < "${in_prefix}.bim")
-
-  # Tag with the row number, not with alleles. plink2 refuses allele-bearing
-  # IDs beyond --new-id-max-allele-len (default 23) and this panel carries a
-  # 244-base allele, so '@:#:$r:$a' fails outright. The tag only has to be
-  # unique: the selector compares alleles from the .bim's A1/A2 columns, never
-  # from the ID. Rewriting only the .bim and linking .bed/.fam avoids copying
-  # the genotypes.
-  local tagged="${in_prefix}.tagged"
-  local src_abs
-  src_abs="$(cd "$(dirname "$in_prefix")" && pwd)/$(basename "$in_prefix")"
-  ln -sf "${src_abs}.bed" "${tagged}.bed" || die "could not link ${tagged}.bed"
-  ln -sf "${src_abs}.fam" "${tagged}.fam" || die "could not link ${tagged}.fam"
-  awk 'BEGIN { OFS = "\t" } { $2 = "v" NR; print }' \
-    "${in_prefix}.bim" > "${tagged}.bim" \
-    || die "failed to write ${tagged}.bim"
-
-  "$RSCRIPT" --vanilla "$select_script" \
-    "${tagged}.bim" \
-    "${in_prefix}.keep.txt" \
-    "$ASSEMBLY" \
-    "$LOCUS" \
-    "$FILTER" \
-    "$MODEL_PATH" \
-    || die "select_model_variants.R failed"
-
-  # Two calls, not one. --set-all-var-ids renames on load, BEFORE --extract is
-  # applied, so combining them makes --extract search for tags that no longer
-  # exist and every variant is filtered out. Extract by tag first, rename after.
-  plink2 \
-    --bfile "$tagged" \
-    --extract "${in_prefix}.keep.txt" \
-    --silent \
-    --make-bed \
-    --out "${in_prefix}.sel" \
-    || die "plink2 failed while extracting selected variants (see ${in_prefix}.sel.log)"
-
-  # One record per position by construction now, so --rm-dup is a safety net
-  # and should report nothing removed.
-  plink2 \
-    --bfile "${in_prefix}.sel" \
-    --set-all-var-ids '@:#' \
-    --rm-dup exclude-all \
-    --silent \
-    --make-bed \
-    --out "$out_prefix" \
-    || die "plink2 failed while standardising variant IDs (see ${out_prefix}.log)"
-
-  local n_var n_uniq
-  n_var=$(wc -l < "${out_prefix}.bim")
-  n_uniq=$(awk '{print $2}' "${out_prefix}.bim" | sort -u | wc -l)
-  if (( n_var != n_uniq )); then
-    die "Variant IDs are not unique after deduplication ($n_uniq unique of $n_var)."
-  fi
-  (( n_var > 0 )) || die "No variants remaining after standardisation."
 }
 
 # =============================================================================
@@ -567,20 +468,12 @@ imputation() {
     fi
   fi
 
-  # ── Standardise before checking ───────────────────────────────────────────
-  # Must happen before the overlap check, so the check and predict.R read the
-  # same file. Checking the raw extract and predicting from the cleaned one is
-  # what made the two rates disagree.
-  log_step "Standardising variant IDs (chr:pos) and removing duplicates..."
-  standardise_plink "$TMP_DIR/$filename"
-  local clean="$TMP_DIR/$filename.nodup"
-
   # ── SNP missingness check ─────────────────────────────────────────────────
   log_step "Checking SNP overlap with KIR model..."
 
   local matching
   matching=$("$RSCRIPT" --vanilla "$missingness_script" \
-    "$clean" \
+    "$TMP_DIR/$filename" \
     "$OUTPUT_DIR" \
     "$ASSEMBLY" \
     "$LOCUS" \
@@ -601,15 +494,11 @@ imputation() {
       log_step "Pre-imputing missing SNPs with minimac4..."
       "$PONG2_root/scripts/dependancy.sh" "$OUTPUT_DIR" "$ASSEMBLY" "minimac4"
       _run_minimac4_from_vcf "$input_vcf" "$filename"
-      # The imputed set needs the same standardisation as the raw one, or the
-      # recovered variants reach kirPredict under minimac4's own IDs.
-      log_step "Standardising imputed variants..."
-      standardise_plink "$TMP_DIR/imputed.$filename"
-      kir_imputation "$TMP_DIR/imputed.$filename.nodup"
+      kir_imputation "$TMP_DIR/imputed.$filename"
 
     elif [[ "$FORCE" == "true" ]]; then
       log_warn "Proceeding despite low match rate (--force enabled)"
-      kir_imputation "$clean"
+      kir_imputation "$TMP_DIR/$filename"
 
     else
       log_error "Match rate too low: ${matching_pct}%"
@@ -621,7 +510,7 @@ imputation() {
 
   else
     log_info "Match rate sufficient: ${matching_pct}% — proceeding with imputation"
-    kir_imputation "$clean"
+    kir_imputation "$TMP_DIR/$filename"
   fi
 }
 
@@ -718,29 +607,51 @@ run_minimac4_416() {
 # HELPER: KIR PREDICTION
 # =============================================================================
 kir_imputation() {
-  # Already standardised by standardise_plink: IDs are chr:pos and unique, and
-  # the overlap check above was run against this same prefix.
   local plink_file="$1"
 
   log_step "Running KIR prediction: $LOCUS"
 
-  local ext
-  for ext in bed bim fam; do
-    [[ -f "${plink_file}.${ext}" ]] \
-      || die "Internal error: kir_imputation expects a standardised prefix, missing ${plink_file}.${ext}"
-  done
+  # Standardise variant IDs to chr:pos and drop ambiguous positions.
+  # This must produce exactly the same ID for a site as preprocess_plink does
+  # during training, because HIBAG pairs model to data with
+  #     snp.sel <- match(model$snp.id, geno$snp.id)
+  # which is string equality. See the longer note in preprocess_plink for why
+  # allele-bearing IDs do not survive a change of dataset.
+  #
+  # plink2's --set-all-var-ids renames on load, before --rm-dup and before
+  # anything is written, so this single call replaces whatever IDs the input
+  # carried. (The awk that used to build chr:pos IDs here was overwritten by
+  # this same flag, and the .snp_dup.txt it produced was never read.)
+  plink2 \
+    --bfile "$plink_file" \
+    --set-all-var-ids '@:#' \
+    --rm-dup exclude-all \
+    --silent \
+    --make-bed \
+    --out "${plink_file}.nodup" \
+    || die "plink2 failed while standardising variant IDs (see ${plink_file}.nodup.log)"
+
+  # Variant IDs must be unique, or match() silently resolves a model SNP to
+  # whichever copy comes first.
+  local n_var n_uniq
+  n_var=$(wc -l < "${plink_file}.nodup.bim")
+  n_uniq=$(awk '{print $2}' "${plink_file}.nodup.bim" | sort -u | wc -l)
+  if (( n_var != n_uniq )); then
+    die "Variant IDs are not unique after deduplication ($n_uniq unique of $n_var)."
+  fi
+  log_info "Variants for prediction: $n_var (IDs chr:pos, unique)"
 
   # Copy final plink files to output, prefixed with the locus so that
   # concurrent runs sharing one --output directory write distinct files.
   local f
-  for f in "${plink_file}."*; do
+  for f in "${plink_file}.nodup."*; do
     [[ -e "$f" ]] || continue
     cp "$f" "$OUTPUT_DIR/${LOCUS}_$(basename "$f")"
   done
 
   # Run R prediction — pass MODEL_PATH as 7th argument
   "$RSCRIPT" --vanilla "$predict_script" \
-    "$plink_file" \
+    "${plink_file}.nodup" \
     "$OUTPUT_DIR" \
     "$LOCUS" \
     "$ASSEMBLY" \
