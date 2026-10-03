@@ -149,13 +149,13 @@ if (length(mobj$snp.position) != length(mobj$snp.id))
 mobj$snp.id   <- rebuild_ids(mobj$snp.position)
 .n_model_dup  <- sum(duplicated(mobj$snp.id))
 
-# cat("Model SNP IDs rebuilt from position: ", length(mobj$snp.id),
-#     " SNPs (was '", .shape_before, "', e.g. ", .example_from, " -> ",
-#     mobj$snp.id[1], ")\n", sep = "")
+cat("Model SNP IDs rebuilt from position: ", length(mobj$snp.id),
+    " SNPs (was '", .shape_before, "', e.g. ", .example_from, " -> ",
+    mobj$snp.id[1], ")\n", sep = "")
 
 if (.n_model_dup > 0) {
   cat("*** WARNING:", .n_model_dup, "model SNPs share a position with another.\n")
-  cat("    Their rebuilt IDs collide; PONG keeps the first and treats the rest\n")
+  cat("    Their rebuilt IDs collide; HIBAG keeps the first and treats the rest\n")
   cat("    as missing. Expect that many SNPs to be unusable.\n\n")
 }
 rm(.shape_before, .example_from, .n_model_dup)
@@ -202,12 +202,12 @@ bim_ids <- rebuild_ids(bim_pos)
 
 n_id_hit <- sum(model_ids %in% bim_ids)
 
-# cat("--- Model / data overlap ---\n")
-# cat("Model SNPs:      ", length(model_ids), "  e.g. ", head(model_ids, 1), "\n", sep = "")
-# cat("Data variants:   ", length(bim_ids),   "  e.g. ", head(bim_ids, 1),   "\n", sep = "")
-# cat(sprintf("Model SNPs present: %d / %d (%.2f%%)\n",
-#             n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
-# cat("----------------------------\n\n")
+cat("--- Model / data overlap ---\n")
+cat("Model SNPs:      ", length(model_ids), "  e.g. ", head(model_ids, 1), "\n", sep = "")
+cat("Data variants:   ", length(bim_ids),   "  e.g. ", head(bim_ids, 1),   "\n", sep = "")
+cat(sprintf("Model SNPs present: %d / %d (%.2f%%)\n",
+            n_id_hit, length(model_ids), 100 * n_id_hit / length(model_ids)))
+cat("----------------------------\n\n")
 
 if (n_id_hit == 0) {
   stop("No model SNP positions are present in the data.\n",
@@ -296,7 +296,8 @@ for (i in seq_len(n_chunks)) {
       paste0(tmp_prefix, ".fam"),
       paste0(tmp_prefix, ".bim"),
       import.chr = "19",
-      assembly   = assembly
+      assembly   = assembly,
+      verbose    = FALSE   # silences per-chunk "Open ...bed in the SNP-major mode."
     )
     
     # Rebuild IDs from position, exactly as the model's were, so match() pairs
@@ -304,11 +305,38 @@ for (i in seq_len(n_chunks)) {
     # In place: same length, same order.
     if (length(genotype$snp.position) != length(genotype$snp.id))
       stop("genotype snp.position and snp.id are not aligned for chunk ", i)
+    
+    # Drop every variant at a duplicated position before rebuilding IDs.
+    # Rebuilt IDs would otherwise collide, and HIBAG's
+    # snp.sel[duplicated(snp.sel)] <- NA_integer_ then discards model SNPs
+    # that are physically present in the data.
+    .gpos <- as.integer(genotype$snp.position)
+    .dup  <- .gpos %in% .gpos[duplicated(.gpos)]
+    if (any(.dup)) {
+      genotype <- hlaGenoSubset(genotype, snp.sel = !.dup)
+      if (i == 1)
+        cat("    dropped ", sum(.dup),
+            " variants sharing a position with another variant\n", sep = "")
+    }
+    
     genotype$snp.id <- rebuild_ids(genotype$snp.position)
     
-    chunk_geno <- hlaGenoSubsetFlank(genotype, locus,
-                                     region * 5000,
-                                     assembly = assembly)
+    # Keep exactly the model's SNPs: minimal memory, and no positional window
+    # that could clip the model's span.
+    chunk_geno <- hlaGenoSubset(genotype,
+                                snp.sel = genotype$snp.id %in% model_ids)
+    
+    # The pre-flight counts model SNPs against the .bim; this counts them
+    # against what hlaBED2Geno actually imported. When the two disagree,
+    # hlaBED2Geno refused some records (it imports biallelic ACGT SNPs only,
+    # so indels and multi-allelic rows are dropped) — print both so the
+    # difference is attributable instead of surfacing later as
+    # "more than 50% of SNPs are missing".
+    if (i == 1) {
+      cat("    variants in chunk .bim: ",
+          length(readLines(paste0(tmp_prefix, ".bim"))),
+          " | imported by hlaBED2Geno: ", length(genotype$snp.id), "\n", sep = "")
+    }
     
     # Authoritative overlap: this is the exact set kirPredict will match
     # against, whatever hlaBED2Geno did to the IDs on the way in. Reported once
