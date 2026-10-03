@@ -16,7 +16,10 @@ assembly   <- args[3]
 locus      <- args[4]
 filter     <- as.numeric(args[5])
 PONG2_root <- args[6]
-model_path <- if (length(args) >= 7 && args[7] != "Null") args[7] else NULL
+# An unset $MODEL_PATH arrives as "", which must mean "use the built-in model",
+# not "open the file called ''".
+model_path <- if (length(args) >= 7 && !is.na(args[7]) && nzchar(args[7]) &&
+                  !args[7] %in% c("Null", "NULL", "NA", "None")) args[7] else NULL
 
 # =============================================================================
 # VALIDATE ARGUMENTS
@@ -62,10 +65,25 @@ if (!is.null(model_path)) {
 } else {
   # ── Built-in pre-trained model ────────────────────────────────────────────
   
-  # Load model object once
-  rds_path  <- system.file("data", "Rdata.rds", package = "PONG2")
-  object    <- readRDS(rds_path)
-  getObject <- get(object$models)
+  # Resolve the model store exactly as predict.R does. The previous
+  # system.file("data", "Rdata.rds", ...) returns "" when the file is not in
+  # the installed package, and readRDS("") then fails with
+  #   cannot open compressed file ''
+  # rather than saying the model store is missing. .get_model_path() also
+  # covers the user-cache location that system.file never sees.
+  # ::: so this works whether or not the helper is exported.
+  rds_path <- PONG2:::.get_model_path()
+  if (!length(rds_path) || !nzchar(rds_path) || !file.exists(rds_path)) {
+    stop("PONG2 model store not found (.get_model_path() returned ",
+         if (length(rds_path)) shQuote(rds_path) else "nothing", ").\n",
+         "  Pass a model explicitly with --model, or reinstall PONG2 so the\n",
+         "  model store is present.")
+  }
+  
+  # readRDS returns the model list itself; predict.R uses it directly. The old
+  # get(object$models) indirection belongs to an earlier RDS layout and errors
+  # on the current one.
+  getObject <- readRDS(rds_path)
   
   # Validate filter
   valid_filters <- c(0, 0.01, 0.005)
